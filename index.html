@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Ilha Viva — Aventura de Lia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-viewport">
+    <canvas id="gameCanvas" tabindex="0" aria-label="Cenário de Ilha Viva em tela cheia com Lia explorando praia, ponte larga e bosque"></canvas>
+    
+    <!-- HUD Flutuante Superior (100% integrado ao jogo) -->
+    <header class="floating-hud" role="region" aria-label="Painel de Informações">
+      <div class="hud-left">
+        <div class="brand-pill">
+          <span class="brand-icon" aria-hidden="true">🏝️</span>
+          <span class="brand-title">Ilha Viva</span>
+        </div>
+        
+        <div class="seed-counter-badge" id="seedBadge" aria-label="Progresso de sementes">
+          <span class="seed-icon" aria-hidden="true">🌱</span>
+          <span id="seedsCollected" class="seed-count">0</span>/<span id="seedsTotal" class="seed-count">10</span>
+        </div>
+
+        <div class="hud-status-badge">
+          <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+          <span id="statusMessage" role="status" aria-live="polite">Resgate dez sementes para devolver vida à ilha</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="hud-actions">
+          <button id="btnStart" class="ui-btn primary-btn" type="button" aria-label="Iniciar exploração">Iniciar</button>
+          <button id="btnPause" class="ui-btn" type="button" aria-label="Pausar ou retomar o jogo (tecla P)">Pausar (P)</button>
+          <button id="btnReset" class="ui-btn" type="button" aria-label="Reiniciar partida">Reiniciar</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toast de Descoberta de Local ao Clicar na Plaquinha -->
+    <div id="placeToast" class="place-discovery-toast hidden" role="status" aria-live="polite">
+      <span class="toast-icon" id="toastIcon">📍</span>
+      <span class="toast-text" id="toastTitle">Nome do Local</span>
+      <span class="toast-desc" id="toastSubtitle">Clique para inspecionar</span>
+    </div>
+
+    <!-- Controles Virtuais de Toque Flutuantes (Mobile) -->
+    <section class="floating-touch-controls" aria-label="Controles virtuais de toque">
+      <div class="dpad">
+        <button id="btnUp" class="dpad-btn up" type="button" aria-label="Mover Lia para cima">▲</button>
+        <div class="dpad-middle">
+          <button id="btnLeft" class="dpad-btn left" type="button" aria-label="Mover Lia para a esquerda">◀</button>
+          <button id="btnDown" class="dpad-btn down" type="button" aria-label="Mover Lia para baixo">▼</button>
+          <button id="btnRight" class="dpad-btn right" type="button" aria-label="Mover Lia para a direita">▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Legenda Discreta no Rodapé -->
+    <div class="bottom-legend">
+      <span><strong>WASD</strong> ou <strong>Setas</strong> para mover • <strong>P</strong> pausa/retoma • Clique nas <strong>Plaquinhas</strong></span>
+    </div>
+
+    <!-- Overlay de Pausa / Vitória -->
+    <div id="modalOverlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card">
+        <h2 id="modalTitle">Jogo Pausado</h2>
+        <p id="modalDescription">A exploração está em pausa. Pressione o botão Retomar ou a tecla P para continuar.</p>
+        <div class="modal-actions">
+          <button id="modalResumeBtn" class="ui-btn primary-btn" type="button">Retomar</button>
+          <button id="modalResetBtn" class="ui-btn" type="button">Reiniciar Partida</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
