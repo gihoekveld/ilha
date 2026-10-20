@@ -3,16 +3,9 @@
 ## 1. Visão Geral do Jogo
 - **Título**: Ilha Viva
 - **Gênero / Estilo**: Aventura 2D em visão top-down / isométrica estilizada via Canvas.
-- **Protagonista**: Lia, uma exploradora com mochila.
-- **Objetivo Principal**: 
-  1. Recuperar 10 sementes espalhadas pelo cenário.
-  2. Plantar as sementes para devolver a vida e o verde à ilha.
-
----
-
-## 2. Cenário e Regras de Jogo
-- **Ambientes**:
-  - **Praia** e **Bosque**, conectados por uma passagem larga.
+- **Protagonista**: Lia, uma exploradora representada por um lobo-guará com mochila.
+- **Inimigo / Perigo**: Um fantasma na forma de uma onça-pintada espectral patrulhando a névoa do bosque.
+- **Cenário**: Praia e bosque ligados por uma ponte larga de madeira sobre o mar.
   - Lia deve permanecer sempre em terra firme (limites intransponíveis de água/obstáculos).
 - **Inimigo / Perigo**:
   - Um **Guarda de Névoa** patrulha ativamente o bosque.

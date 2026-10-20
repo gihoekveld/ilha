@@ -1,14 +1,11 @@
 /**
- * Ilha Viva - Jogo em Tela Cheia com Guarda de Névoa no Bosque
- * - Guarda de névoa: patrulha uma linha horizontal fixa em área aberta do bosque (Y: 340, X entre 320 e 640).
- * - Distância segura: Longe do início de Lia na praia (Y: 1240) e da saída da ponte (Y: 570).
- * - Não persegue Lia nem cruza a ponte/passagem.
- * - Velocidade constante (110 px/s) e menor que a de Lia (210 px/s).
- * - Seta direcional visível (◀ ou ▶) e indicação textual de acessibilidade "NÉVOA".
- * - Folga total para desvio (acima, abaixo, esquerda e direita), permitindo alcançar todas as 10 sementes.
- * - Contato com o guarda aciona derrota com o título "A névoa alcançou você".
- * - Reiniciar restaura Lia, guarda, 10 sementes, contador 0/10 e câmera.
- * - Pausa com P ou troca de aba congela o guarda e Lia sem salto temporal na retomada.
+ * Ilha Viva - Personagens com Nova Identidade da Fauna Brasileira:
+ * - Protagonista Lia: Um majestoso Lobo-Guará (pelagem avermelhada/ruiva, crina negra no dorso,
+ *   focinho esguio, orelhas pontudas alertas com interior claro, patas longas pretas e sua inseparável mochila marrom).
+ * - Guarda / Perigo: Uma imponente Onça-Pintada Espectral (corpo felino robusto, orelhas arredondadas,
+ *   pelagem dourada fantasmagórica com rosetas/pintas escuras características, olhos brilhantes e aura de névoa).
+ * - Preservadas integralmente: física, colisões, patrulha com seta indicativa, coleta das 10 sementes,
+ *   ponte larga, vitória, controles, tela cheia, pausa e reinício.
  */
 
 (function () {
@@ -85,9 +82,6 @@
   };
 
   // Regiões de Terra Firme e Ponte:
-  // - Praia (Sul): x [90, 870], y [840, 1340]
-  // - Ponte Larga (Centro): x [300, 660], y [570, 870] (360px de largura sobre o mar)
-  // - Bosque (Norte): x [80, 880], y [60, 600]
   const TERRAIN_REGIONS = [
     { name: 'Praia', type: 'beach', x: 90, y: 840, w: 780, h: 500 },
     { name: 'Ponte Larga', type: 'bridge', x: 300, y: 570, w: 360, h: 300 },
@@ -147,7 +141,7 @@
     { type: 'starfish', x: 260, y: 890, scale: 1.0, solid: false },
     { type: 'starfish', x: 700, y: 890, scale: 1.0, solid: false },
 
-    // Bosque (posicionados para deixar aberta a rota de patrulha do guarda em Y: 340)
+    // Bosque
     { type: 'oak', x: 160, y: 160, scale: 1.35, solidW: 50, solidH: 50 },
     { type: 'oak', x: 800, y: 160, scale: 1.35, solidW: 50, solidH: 50 },
     { type: 'oak', x: 480, y: 130, scale: 1.4, solidW: 54, solidH: 54 },
@@ -164,22 +158,18 @@
   ];
 
   // ==========================================
-  // GUARDA DE NÉVOA
-  // Patrulha uma linha horizontal fixa numa área aberta do bosque:
-  // Y = 340 (a 230px de distância da saída da ponte Y: 570 e a 900px do início de Lia Y: 1240)
-  // X varia entre minX: 300 e maxX: 660.
-  // Não persegue Lia nem cruza a ponte/passagem.
-  // Velocidade: 110 px/s (constante e menor que a de Lia, que tem 210 px/s).
+  // GUARDA: ONÇA-PINTADA ESPECTRAL (NÉVOA)
+  // Patrulha em linha horizontal no bosque: Y = 340, X entre 280 e 680.
   // ==========================================
   const GUARD_START = {
     x: 320,
     y: 340,
     minX: 280,
     maxX: 680,
-    width: 44,
+    width: 48,
     height: 38,
     speed: 110,
-    direction: 1 // 1 para direita, -1 para esquerda
+    direction: 1
   };
 
   const fogGuard = {
@@ -193,35 +183,32 @@
     direction: GUARD_START.direction
   };
 
-  // 10 Sementes Alcançáveis com Espaço de Sobra para Desviar do Guarda:
-  // 4 na praia (Sul) e 6 no bosque (Norte)
+  // 10 Sementes Alcançáveis
   const SEED_DEFINITIONS = [
-    // 4 na Praia
     { id: 1, region: 'beach', x: 260, y: 1200, name: 'Semente da Brisa Marinha' },
     { id: 2, region: 'beach', x: 710, y: 1190, name: 'Semente da Maré Mansa' },
     { id: 3, region: 'beach', x: 350, y: 950, name: 'Semente das Dunas' },
     { id: 4, region: 'beach', x: 610, y: 960, name: 'Semente do Sol Costeiro' },
 
-    // 6 no Bosque (posicionadas antes, além e ao redor da patrulha sem bloqueio)
-    { id: 5, region: 'forest', x: 210, y: 500, name: 'Semente do Musgo Verde' }, // antes do guarda
-    { id: 6, region: 'forest', x: 750, y: 490, name: 'Semente do Carvalho' }, // antes do guarda
-    { id: 7, region: 'forest', x: 480, y: 420, name: 'Semente da Clareira' }, // ao sul da linha do guarda
-    { id: 8, region: 'forest', x: 240, y: 280, name: 'Semente do Broto Silvestre' }, // flanco esquerdo livre
-    { id: 9, region: 'forest', x: 720, y: 280, name: 'Semente da Seiva Antiga' }, // flanco direito livre
-    { id: 10, region: 'forest', x: 480, y: 200, name: 'Semente do Coração da Ilha' } // ao norte da linha do guarda
+    { id: 5, region: 'forest', x: 210, y: 500, name: 'Semente do Musgo Verde' },
+    { id: 6, region: 'forest', x: 750, y: 490, name: 'Semente do Carvalho' },
+    { id: 7, region: 'forest', x: 480, y: 420, name: 'Semente da Clareira' },
+    { id: 8, region: 'forest', x: 240, y: 280, name: 'Semente do Broto Silvestre' },
+    { id: 9, region: 'forest', x: 720, y: 280, name: 'Semente da Seiva Antiga' },
+    { id: 10, region: 'forest', x: 480, y: 200, name: 'Semente do Coração da Ilha' }
   ];
 
   let seeds = [];
   let sparkles = [];
 
-  // Posição Inicial de Lia
+  // Posição Inicial de Lia (Lobo-Guará)
   const LIA_START_X = 480;
   const LIA_START_Y = 1240;
 
   const lia = {
     x: LIA_START_X,
     y: LIA_START_Y,
-    radius: 16,
+    radius: 17,
     speed: 210,
     facing: 'up',
     isMoving: false,
@@ -265,7 +252,6 @@
     }
   }
 
-  // Verificação de Limites: Todo o corpo circular de Lia em terra firme ou sobre a ponte
   function isWalkable(x, y, radius) {
     const checkPoints = [
       { x: x - radius, y: y },
@@ -283,7 +269,6 @@
 
     if (!allOnLand) return false;
 
-    // Obstáculos sólidos da cenografia
     for (const prop of SCENERY_PROPS) {
       if (prop.solidW && prop.solidH) {
         const ox = prop.x - prop.solidW / 2;
@@ -298,7 +283,6 @@
       }
     }
 
-    // Estacas das plaquinhas
     for (const sign of SIGNPOSTS) {
       const sx = sign.x - 10;
       const sy = sign.y - 10;
@@ -354,7 +338,6 @@
     }
   }
 
-  // Derrota pelo Guarda de Névoa
   function handleDefeat() {
     currentState = State.DEFEATED;
 
@@ -365,7 +348,7 @@
     keys.right = false;
 
     modalTitle.textContent = 'A névoa alcançou você';
-    modalDescription.textContent = 'O Guarda de Névoa bloqueou seu avanço no bosque. Observe a seta de direção e desvie pela clareira para resgatar as sementes.';
+    modalDescription.textContent = 'A Onça-Pintada de névoa bloqueou seu avanço. Observe a seta indicativa e use a agilidade do lobo-guará para desviar!';
     modalResumeBtn.style.display = 'none';
     modalOverlay.classList.remove('hidden');
     modalResetBtn.focus();
@@ -383,7 +366,7 @@
     keys.right = false;
 
     modalTitle.textContent = 'Resgate concluído';
-    modalDescription.textContent = 'Você resgatou todas as dez sementes da ilha! A terra está pronta para renascer com o futuro plantio.';
+    modalDescription.textContent = 'Lia resgatou todas as dez sementes da ilha! A terra está pronta para renascer com o futuro plantio.';
     modalResumeBtn.style.display = 'none';
     modalOverlay.classList.remove('hidden');
     modalResetBtn.focus();
@@ -431,7 +414,7 @@
     if (currentState === State.PAUSED) {
       currentState = State.PLAYING;
       modalOverlay.classList.add('hidden');
-      lastTimestamp = performance.now(); // Previne salto de posição do guarda e de Lia
+      lastTimestamp = performance.now();
       updateHUD();
       canvas.focus();
     }
@@ -447,7 +430,6 @@
     }
   }
 
-  // Reiniciar Restaura Lia, Guarda, Dez Sementes, Contador 0/10 e Câmera
   function resetGame() {
     lia.x = LIA_START_X;
     lia.y = LIA_START_Y;
@@ -507,7 +489,7 @@
 
     if (currentState !== State.PLAYING) return;
 
-    // 1. Movimentação de Lia
+    // 1. Movimentação de Lia (Lobo-Guará)
     let moveX = 0;
     let moveY = 0;
 
@@ -546,17 +528,17 @@
       lia.walkCycle = 0;
     }
 
-    // 2. Movimento do Guarda de Névoa (Patrulha em Linha Fixa Horizontal no Bosque)
+    // 2. Movimento da Onça-Pintada Espectral (Guarda)
     fogGuard.x += fogGuard.direction * fogGuard.speed * dt;
     if (fogGuard.x >= fogGuard.maxX) {
       fogGuard.x = fogGuard.maxX;
-      fogGuard.direction = -1; // Vira para esquerda
+      fogGuard.direction = -1;
     } else if (fogGuard.x <= fogGuard.minX) {
       fogGuard.x = fogGuard.minX;
-      fogGuard.direction = 1; // Vira para direita
+      fogGuard.direction = 1;
     }
 
-    // 3. Colisão com o Guarda de Névoa (Círculo vs Caixa Delimitadora)
+    // 3. Colisão com a Onça
     const gLeft = fogGuard.x - fogGuard.width / 2;
     const gRight = fogGuard.x + fogGuard.width / 2;
     const gTop = fogGuard.y - fogGuard.height / 2;
@@ -599,7 +581,6 @@
       }
     }
 
-    // Câmera adaptativa suave
     camera.targetX = lia.x - viewW / 2;
     camera.targetY = lia.y - viewH * 0.55;
 
@@ -628,39 +609,27 @@
     ctx.save();
     ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
 
-    // Ilhas
+    // Ilhas e Ponte
     renderIslands();
-
-    // Ponte Larga
     renderLargeBridge();
-
-    // Rota de Patrulha Indicativa Suave do Guarda
     renderPatrolRoute();
 
     // Cenografia
     renderSceneryProps();
-
-    // Plaquinhas
     renderSignposts();
-
-    // Sementes
     renderSeeds();
-
-    // Partículas
     renderSparkles();
 
-    // Guarda de Névoa
-    renderFogGuard();
+    // Guarda: Onça-Pintada Espectral
+    renderJaguarGuard();
 
-    // Lia
-    renderLia();
+    // Protagonista: Lobo-Guará Lia
+    renderManedWolfLia();
 
     ctx.restore();
 
-    // 3. Minimapa (com radar de Lia, sementes e guarda)
+    // 3. Minimapa e Vinheta
     renderMinimapHUD();
-
-    // 4. Atmosfera
     renderLightingEffects();
 
     ctx.restore();
@@ -754,12 +723,10 @@
     const bw = 360;
     const bh = 300;
 
-    // Sombra
     ctx.fillStyle = 'rgba(2, 25, 45, 0.65)';
     roundRect(ctx, bx - 12, by + 10, bw + 24, bh, 8);
     ctx.fill();
 
-    // Pilares
     const pileXCoords = [bx + 20, bx + 130, bx + 230, bx + bw - 20];
     pileXCoords.forEach(px => {
       ctx.fillStyle = '#3e1d08';
@@ -771,12 +738,10 @@
       ctx.fill();
     });
 
-    // Vigas
     ctx.fillStyle = '#58280a';
     ctx.fillRect(bx - 4, by, 10, bh);
     ctx.fillRect(bx + bw - 6, by, 10, bh);
 
-    // Pranchas
     const plankHeight = 16;
     const gap = 3;
     for (let py = by; py <= by + bh - plankHeight; py += plankHeight + gap) {
@@ -807,7 +772,6 @@
       ctx.fill();
     }
 
-    // Guarda-corpos
     ctx.fillStyle = '#58280a';
     ctx.strokeStyle = '#381a07';
     ctx.lineWidth = 2;
@@ -842,7 +806,6 @@
     ctx.restore();
   }
 
-  // Linha tracejada suave indicando a rota de patrulha no bosque
   function renderPatrolRoute() {
     ctx.save();
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
@@ -856,68 +819,161 @@
     ctx.restore();
   }
 
-  // ==========================================
-  // RENDERIZAÇÃO DO GUARDA DE NÉVOA
-  // Com seta direcional clara, aura espectral e acessibilidade
-  // ==========================================
-  function renderFogGuard() {
+  // =========================================================================
+  // NOVO DESIGN DO GUARDA: ONÇA-PINTADA ESPECTRAL (FANTASMA DA NÉVOA)
+  // Felino musculoso, orelhas arredondadas, pelagem dourada/espectral com rosetas
+  // =========================================================================
+  function renderJaguarGuard() {
     ctx.save();
     ctx.translate(fogGuard.x, fogGuard.y);
 
     const pulse = Math.sin(globalAnimTimer * 5) * 3;
+    const isFacingRight = fogGuard.direction === 1;
 
-    // 1. Sombra e aura de névoa densa
-    const mistGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 36 + pulse);
-    mistGrad.addColorStop(0, 'rgba(241, 245, 249, 0.95)');
-    mistGrad.addColorStop(0.5, 'rgba(148, 163, 184, 0.6)');
+    // 1. Aura Espectral de Névoa Densa
+    const mistGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 38 + pulse);
+    mistGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)'); // brilho dourado espectral
+    mistGrad.addColorStop(0.4, 'rgba(148, 163, 184, 0.6)'); // névoa azulada
     mistGrad.addColorStop(1, 'rgba(51, 65, 85, 0)');
     ctx.fillStyle = mistGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, 36 + pulse, 0, Math.PI * 2);
+    ctx.arc(0, 0, 38 + pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Corpo espectral do guarda
-    ctx.fillStyle = '#334155';
+    // 2. Sombra fantasmagórica
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 14, 22, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Cauda Longa Felina com Ponta Escura (balanço sinuoso)
+    ctx.save();
+    const tailSway = Math.sin(globalAnimTimer * 4) * 4;
+    const tailBaseX = isFacingRight ? -16 : 16;
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tailBaseX, 2);
+    ctx.quadraticCurveTo(tailBaseX - (isFacingRight ? 12 : -12), -6 + tailSway, tailBaseX - (isFacingRight ? 18 : -18), -12 + tailSway);
+    ctx.stroke();
+
+    // Ponta preta da cauda
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2;
-    roundRect(ctx, -fogGuard.width / 2, -fogGuard.height / 2, fogGuard.width, fogGuard.height, 10);
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(tailBaseX - (isFacingRight ? 14 : -14), -9 + tailSway);
+    ctx.lineTo(tailBaseX - (isFacingRight ? 18 : -18), -12 + tailSway);
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Patas Robustas da Onça
+    ctx.fillStyle = '#b45309';
+    const pawOff = Math.sin(globalAnimTimer * 8) * 3;
+    ctx.beginPath();
+    ctx.ellipse(-11 + pawOff, 11, 4.5, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(11 - pawOff, 11, 4.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Corpo Robusto Felino (Dourado Espectral)
+    ctx.fillStyle = '#eab308';
+    ctx.strokeStyle = '#854d0e';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 19, 13, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // 3. Olhos brilhantes da névoa
+    // 6. Rosetas e Pintas Típicas da Onça-Pintada
+    ctx.fillStyle = '#451a03';
+    const spots = [
+      { x: -8, y: -2, r: 2.2 },
+      { x: 0, y: 3, r: 2.5 },
+      { x: 8, y: -1, r: 2.0 },
+      { x: -4, y: 7, r: 1.8 },
+      { x: 6, y: 6, r: 1.8 }
+    ];
+    spots.forEach(sp => {
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+      ctx.fill();
+      // Centro dourado da roseta
+      ctx.fillStyle = '#ca8a04';
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, sp.r * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#451a03';
+    });
+
+    // 7. Cabeça da Onça (arredondada e poderosa)
+    const headX = isFacingRight ? 12 : -12;
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#854d0e';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(headX, -6, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Orelhas Arredondadas da Onça
+    ctx.fillStyle = '#713f12';
+    ctx.beginPath();
+    ctx.arc(headX - 6, -15, 3.5, 0, Math.PI * 2);
+    ctx.arc(headX + 6, -15, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Interior claro da orelha
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(headX - 6, -15, 1.8, 0, Math.PI * 2);
+    ctx.arc(headX + 6, -15, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Focinho da onça
+    ctx.fillStyle = '#fef9c3';
+    ctx.beginPath();
+    const snoutX = isFacingRight ? headX + 5 : headX - 5;
+    ctx.arc(snoutX, -4, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nariz preto
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(isFacingRight ? snoutX + 2 : snoutX - 2, -5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Olhos Espectrais Felinos Cintilantes (Ciano / Azul Névoa)
     ctx.fillStyle = '#38bdf8';
     ctx.shadowColor = '#38bdf8';
     ctx.shadowBlur = 8;
-    const eyeLook = fogGuard.direction === 1 ? 3 : -3;
+    const eyeLook = isFacingRight ? 2 : -2;
     ctx.beginPath();
-    ctx.arc(-8 + eyeLook, -6, 3, 0, Math.PI * 2);
-    ctx.arc(6 + eyeLook, -6, 3, 0, Math.PI * 2);
+    ctx.arc(headX - 2 + eyeLook, -7, 1.8, 0, Math.PI * 2);
+    ctx.arc(headX + 3 + eyeLook, -7, 1.8, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // 4. Rótulo de Acessibilidade Textual "NÉVOA"
+    // 8. Rótulo de Acessibilidade Textual
     ctx.fillStyle = '#f8fafc';
     ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('NÉVOA', 0, 9);
+    ctx.fillText('ONÇA', 0, 24);
 
-    // 5. SETA DIRECIONAL VISÍVEL (Indica se está indo para direita ou esquerda)
+    // 9. Seta Direcional Vermelha Viva de Alerta
     ctx.save();
-    ctx.fillStyle = '#ef4444'; // Vermelho vivo de perigo
+    ctx.fillStyle = '#ef4444';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    if (fogGuard.direction === 1) {
-      // Seta apontando para a direita ▶
-      ctx.moveTo(14, -6);
-      ctx.lineTo(24, 0);
-      ctx.lineTo(14, 6);
+    if (isFacingRight) {
+      ctx.moveTo(18, -6);
+      ctx.lineTo(28, 0);
+      ctx.lineTo(18, 6);
       ctx.closePath();
     } else {
-      // Seta apontando para a esquerda ◀
-      ctx.moveTo(-14, -6);
-      ctx.lineTo(-24, 0);
-      ctx.lineTo(-14, 6);
+      ctx.moveTo(-18, -6);
+      ctx.lineTo(-28, 0);
+      ctx.lineTo(-18, 6);
       ctx.closePath();
     }
     ctx.fill();
@@ -927,482 +983,224 @@
     ctx.restore();
   }
 
-  function roundRect(context, x, y, w, h, r) {
-    context.beginPath();
-    roundRectPath(context, x, y, w, h, r);
-  }
-
-  function roundRectPath(context, x, y, w, h, r) {
-    context.roundRect(x, y, w, h, r);
-  }
-
-  function renderSeeds() {
-    seeds.forEach(seed => {
-      if (!seed.collected) {
-        ctx.save();
-        ctx.translate(seed.x, seed.y);
-
-        const pulse = Math.sin(globalAnimTimer * 4 + seed.glowTimer) * 2;
-        const currentR = seed.radius + pulse;
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-        ctx.beginPath();
-        ctx.ellipse(0, 9, 8, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        const haloGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, currentR + 10);
-        haloGrad.addColorStop(0, 'rgba(251, 191, 36, 0.85)');
-        haloGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)');
-        haloGrad.addColorStop(1, 'rgba(217, 119, 6, 0)');
-        ctx.fillStyle = haloGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, currentR + 10, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#b45309';
-        ctx.strokeStyle = '#fef08a';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 1, currentR - 1, currentR + 2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#22c55e';
-        ctx.beginPath();
-        ctx.ellipse(0, -currentR + 1, 3.5, 5, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-2, -3, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      }
-    });
-  }
-
-  function renderSparkles() {
-    ctx.save();
-    sparkles.forEach(sp => {
-      const alpha = Math.max(0, sp.life / sp.maxLife);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = sp.color;
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.arc(sp.x, sp.y, sp.size * alpha, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.restore();
-  }
-
-  function renderSignposts() {
-    SIGNPOSTS.forEach(sign => {
-      ctx.save();
-      ctx.translate(sign.x, sign.y);
-
-      const isExpanded = sign.expandedTimer > 0;
-      const isHovered = sign.isHovered;
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-      ctx.beginPath();
-      ctx.ellipse(0, 14, 16, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#5c2c0e';
-      ctx.strokeStyle = '#381a07';
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(-4, -6, 8, 20);
-      ctx.strokeRect(-4, -6, 8, 20);
-
-      ctx.save();
-      if (isHovered || isExpanded) {
-        const hoverPulse = Math.sin(globalAnimTimer * 6) * 1.5;
-        ctx.translate(0, -2 + hoverPulse);
-      }
-
-      const displayText = isExpanded ? sign.fullName : sign.shortLabel;
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      const textMetrics = ctx.measureText(displayText);
-      const boardW = textMetrics.width + 36;
-      const boardH = 26;
-      const boardX = -boardW / 2;
-      const boardY = -28;
-
-      sign.renderedW = boardW;
-      sign.renderedH = boardH;
-      sign.renderedX = sign.x + boardX;
-      sign.renderedY = sign.y + boardY;
-
-      if (isHovered || isExpanded) {
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 10;
-      } else {
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-        ctx.shadowBlur = 5;
-      }
-
-      ctx.fillStyle = isExpanded ? '#92400e' : (isHovered ? '#a16207' : '#854d0e');
-      ctx.strokeStyle = '#451a03';
-      ctx.lineWidth = 2;
-      roundRect(ctx, boardX, boardY, boardW, boardH, 5);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(boardX + 6, boardY + 7);
-      ctx.lineTo(boardX + boardW - 6, boardY + 7);
-      ctx.moveTo(boardX + 10, boardY + 18);
-      ctx.lineTo(boardX + boardW - 10, boardY + 18);
-      ctx.stroke();
-
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath();
-      ctx.arc(boardX + 6, boardY + boardH / 2, 1.5, 0, Math.PI * 2);
-      ctx.arc(boardX + boardW - 6, boardY + boardH / 2, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fef3c7';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 11px system-ui, sans-serif';
-      ctx.fillText(`${sign.icon} ${displayText}`, 0, boardY + boardH / 2);
-
-      if (!isExpanded && isHovered) {
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.fillText('Clique para abrir', 0, boardY - 8);
-      }
-
-      ctx.restore();
-      ctx.restore();
-    });
-  }
-
-  function renderSceneryProps() {
-    SCENERY_PROPS.forEach(prop => {
-      ctx.save();
-      ctx.translate(prop.x, prop.y);
-
-      if (prop.solidW) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.beginPath();
-        ctx.ellipse(0, prop.solidH / 2 - 2, prop.solidW * 0.65, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      switch (prop.type) {
-        case 'palm':
-          renderPalmTree(prop.scale);
-          break;
-        case 'oak':
-          renderOakTree(prop.scale);
-          break;
-        case 'pine':
-          renderPineTree(prop.scale);
-          break;
-        case 'rock':
-          renderRock(prop.scale);
-          break;
-        case 'shell':
-          renderShell(prop.scale);
-          break;
-        case 'starfish':
-          renderStarfish(prop.scale);
-          break;
-        case 'flowerpatch':
-          renderFlowers(prop.scale);
-          break;
-        case 'shrub':
-          renderShrub(prop.scale);
-          break;
-      }
-      ctx.restore();
-    });
-  }
-
-  function renderPalmTree(scale) {
-    ctx.scale(scale, scale);
-    ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 7;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 8);
-    ctx.quadraticCurveTo(-10, -18, -4, -36);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#b45309';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(-2 - i * 1.5, 4 - i * 10, 4, 0, Math.PI);
-      ctx.stroke();
-    }
-
-    const sway = Math.sin(globalAnimTimer * 1.5) * 0.08;
-    ctx.translate(-4, -36);
-    ctx.rotate(sway);
-
-    const leaves = [0, 0.8, 1.6, 2.4, 3.2, 4.0, 4.8, 5.6];
-    leaves.forEach(angle => {
-      ctx.save();
-      ctx.rotate(angle);
-      ctx.fillStyle = '#15803d';
-      ctx.beginPath();
-      ctx.ellipse(14, 0, 18, 5, 0.1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
-
-    ctx.fillStyle = '#451a03';
-    ctx.beginPath();
-    ctx.arc(3, 3, 3, 0, Math.PI * 2);
-    ctx.arc(-2, 2, 3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function renderOakTree(scale) {
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#582c0f';
-    ctx.fillRect(-6, -10, 12, 18);
-
-    const canopyColors = ['#14532d', '#16a34a', '#22c55e'];
-    const offsets = [
-      { x: 0, y: -26, r: 24, c: canopyColors[0] },
-      { x: -12, y: -20, r: 18, c: canopyColors[1] },
-      { x: 12, y: -20, r: 18, c: canopyColors[1] },
-      { x: 0, y: -30, r: 16, c: canopyColors[2] }
-    ];
-
-    offsets.forEach(leaf => {
-      ctx.fillStyle = leaf.c;
-      ctx.beginPath();
-      ctx.arc(leaf.x, leaf.y, leaf.r, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.arc(-6, -26, 2.5, 0, Math.PI * 2);
-    ctx.arc(8, -22, 2.5, 0, Math.PI * 2);
-    ctx.arc(2, -36, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function renderPineTree(scale) {
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#451a03';
-    ctx.fillRect(-4, -6, 8, 14);
-
-    const levels = [
-      { y: -8, w: 28, h: 14, c: '#064e3b' },
-      { y: -18, w: 22, h: 12, c: '#047857' },
-      { y: -26, w: 14, h: 10, c: '#059669' }
-    ];
-
-    levels.forEach(lvl => {
-      ctx.fillStyle = lvl.c;
-      ctx.beginPath();
-      ctx.moveTo(0, lvl.y - lvl.h);
-      ctx.lineTo(-lvl.w / 2, lvl.y);
-      ctx.lineTo(lvl.w / 2, lvl.y);
-      ctx.closePath();
-      ctx.fill();
-    });
-  }
-
-  function renderRock(scale) {
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.moveTo(-16, 8);
-    ctx.lineTo(-12, -8);
-    ctx.lineTo(8, -12);
-    ctx.lineTo(18, 4);
-    ctx.lineTo(8, 10);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.beginPath();
-    ctx.moveTo(-10, -6);
-    ctx.lineTo(6, -10);
-    ctx.lineTo(12, 0);
-    ctx.lineTo(-2, 2);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#4ade80';
-    ctx.beginPath();
-    ctx.arc(-8, -4, 3, 0, Math.PI * 2);
-    ctx.arc(2, -8, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function renderShell(scale) {
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#fed7aa';
-    ctx.strokeStyle = '#ea580c';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  function renderStarfish(scale) {
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#f97316';
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-      const x = Math.cos(angle) * 7;
-      const y = Math.sin(angle) * 7;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  function renderFlowers(scale) {
-    ctx.scale(scale, scale);
-    const colors = ['#f43f5e', '#a855f7', '#38bdf8', '#facc15'];
-    for (let i = 0; i < 5; i++) {
-      const fx = (i - 2) * 6;
-      const fy = Math.sin(i * 1.5) * 5;
-      ctx.fillStyle = colors[i % colors.length];
-      ctx.beginPath();
-      ctx.arc(fx, fy, 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function renderShrub(scale) {
-    ctx.scale(scale, scale);
-    ctx.fillStyle = '#15803d';
-    ctx.beginPath();
-    ctx.arc(-6, 0, 7, 0, Math.PI * 2);
-    ctx.arc(6, 0, 7, 0, Math.PI * 2);
-    ctx.arc(0, -5, 8, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function renderLia() {
+  // =========================================================================
+  // NOVO DESIGN DA PROTAGONISTA: LIA, O LOBO-GUARÁ
+  // Pelagem avermelhada/ruiva, crina negra no dorso, patas longas pretas,
+  // orelhas grandes alertas pontudas, cauda espessa e mochila de explorador
+  // =========================================================================
+  function renderManedWolfLia() {
     ctx.save();
     ctx.translate(lia.x, lia.y);
 
-    const bobbing = lia.isMoving ? Math.sin(lia.walkCycle) * 2 : 0;
+    const bobbing = lia.isMoving ? Math.sin(lia.walkCycle) * 2.5 : 0;
     ctx.translate(0, bobbing);
 
-    // Sombra
+    // 1. Sombra suave sob as patas longas
     ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.beginPath();
-    ctx.ellipse(0, lia.radius - 2 - bobbing, lia.radius * 0.95, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, lia.radius - 1 - bobbing, lia.radius * 0.95, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mochila
+    // 2. Cauda Espessa do Lobo-Guará (Ponta Branca Característica)
+    ctx.save();
+    const tailWag = Math.sin(globalAnimTimer * 6) * 4;
+    ctx.strokeStyle = '#ea580c'; // Ruivo
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+
+    if (lia.facing === 'up') {
+      ctx.moveTo(0, 8);
+      ctx.quadraticCurveTo(tailWag * 1.5, 18, tailWag, 24);
+    } else if (lia.facing === 'down') {
+      ctx.moveTo(0, 6);
+      ctx.quadraticCurveTo(-6, 14, -8, 20);
+    } else if (lia.facing === 'right') {
+      ctx.moveTo(-10, 4);
+      ctx.quadraticCurveTo(-18, 10 + tailWag, -22, 16 + tailWag);
+    } else { // left
+      ctx.moveTo(10, 4);
+      ctx.quadraticCurveTo(18, 10 + tailWag, 22, 16 + tailWag);
+    }
+    ctx.stroke();
+
+    // Ponta branca da cauda (marca registrada do lobo-guará)
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    if (lia.facing === 'up') {
+      ctx.moveTo(tailWag * 0.8, 20);
+      ctx.lineTo(tailWag, 24);
+    } else if (lia.facing === 'right') {
+      ctx.moveTo(-18, 13 + tailWag);
+      ctx.lineTo(-22, 16 + tailWag);
+    } else if (lia.facing === 'left') {
+      ctx.moveTo(18, 13 + tailWag);
+      ctx.lineTo(22, 16 + tailWag);
+    } else {
+      ctx.moveTo(-7, 16);
+      ctx.lineTo(-8, 20);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Patas Longas Pretas ("Meias Negras" do Lobo-Guará)
+    ctx.fillStyle = '#0f172a'; // Preto das patas
+    const stepL = lia.isMoving ? Math.sin(lia.walkCycle) * 4.5 : 0;
+    const stepR = lia.isMoving ? -Math.sin(lia.walkCycle) * 4.5 : 0;
+    ctx.fillRect(-7 + stepL, lia.radius - 3, 4, 8);
+    ctx.fillRect(3 + stepR, lia.radius - 3, 4, 8);
+
+    // 4. Corpo do Lobo-Guará (Pelagem Ruiva / Dourada-Avermelhada)
+    ctx.fillStyle = '#ea580c';
+    ctx.strokeStyle = '#9a3412';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, lia.radius - 1, lia.radius, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 5. Crina Negra no Dorso (Marca Registrada do Lobo-Guará)
+    ctx.fillStyle = '#1e293b';
+    if (lia.facing === 'up') {
+      // Visão de trás: crina central vertical
+      ctx.beginPath();
+      ctx.ellipse(0, -5, 4, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (lia.facing === 'right') {
+      ctx.beginPath();
+      ctx.ellipse(-7, -4, 4, 9, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (lia.facing === 'left') {
+      ctx.beginPath();
+      ctx.ellipse(7, -4, 4, 9, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else { // down (peito claro)
+      ctx.fillStyle = '#ffedd5'; // Peitoral branco do lobo
+      ctx.beginPath();
+      ctx.ellipse(0, 3, 6, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 6. Mochila de Aventura de Lia
     ctx.save();
     ctx.fillStyle = '#78350f';
     ctx.strokeStyle = '#451a03';
     ctx.lineWidth = 1.5;
 
     if (lia.facing === 'up') {
-      roundRect(ctx, -7, 0, 14, 14, 3);
+      roundRect(ctx, -7, 0, 14, 13, 3);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-3, 6, 6, 3);
+      ctx.fillRect(-3, 5, 6, 3);
     } else if (lia.facing === 'right') {
-      roundRect(ctx, -lia.radius - 6, -10, 9, 18, 3);
+      roundRect(ctx, -lia.radius - 4, -8, 8, 16, 3);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-lia.radius - 4, -4, 5, 4);
+      ctx.fillRect(-lia.radius - 3, -3, 5, 4);
     } else if (lia.facing === 'left') {
-      roundRect(ctx, lia.radius - 3, -10, 9, 18, 3);
+      roundRect(ctx, lia.radius - 4, -8, 8, 16, 3);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(lia.radius - 1, -4, 5, 4);
+      ctx.fillRect(lia.radius - 2, -3, 5, 4);
     }
     ctx.restore();
 
-    // Pernas
-    ctx.fillStyle = '#334155';
-    const stepL = lia.isMoving ? Math.sin(lia.walkCycle) * 4 : 0;
-    const stepR = lia.isMoving ? -Math.sin(lia.walkCycle) * 4 : 0;
-    ctx.fillRect(-6 + stepL, lia.radius - 4, 5, 6);
-    ctx.fillRect(2 + stepR, lia.radius - 4, 5, 6);
-
-    // Casaco
-    ctx.fillStyle = '#0284c7';
-    ctx.strokeStyle = '#0369a1';
-    ctx.lineWidth = 2;
+    // 7. Cabeça Esguia do Lobo-Guará
+    ctx.fillStyle = '#f97316';
+    ctx.strokeStyle = '#9a3412';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, lia.radius, 0, Math.PI * 2);
+    ctx.arc(0, -9, 8.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    if (lia.facing !== 'up') {
-      ctx.fillStyle = '#ea580c';
-      ctx.beginPath();
-      ctx.arc(0, 0, 5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Cabeça e Chapéu Safari
-    ctx.fillStyle = '#fed7aa';
+    // 8. Grandes Orelhas Pontudas Alertas (Interior Branco/Claro)
+    // Orelha Esquerda
+    ctx.fillStyle = '#ea580c';
     ctx.beginPath();
-    ctx.arc(0, -7, 9, 0, Math.PI * 2);
+    ctx.moveTo(-8, -12);
+    ctx.lineTo(-12, -24);
+    ctx.lineTo(-3, -16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffedd5'; // Interior branco
+    ctx.beginPath();
+    ctx.moveTo(-7, -13);
+    ctx.lineTo(-10.5, -21);
+    ctx.lineTo(-4, -16);
+    ctx.closePath();
     ctx.fill();
 
+    // Orelha Direita
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.moveTo(8, -12);
+    ctx.lineTo(12, -24);
+    ctx.lineTo(3, -16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffedd5';
+    ctx.beginPath();
+    ctx.moveTo(7, -13);
+    ctx.lineTo(10.5, -21);
+    ctx.lineTo(4, -16);
+    ctx.closePath();
+    ctx.fill();
+
+    // Focinho Alongado do Lobo (se não estiver de costas)
     if (lia.facing !== 'up') {
-      ctx.fillStyle = '#1e293b';
+      ctx.fillStyle = '#1e293b'; // Focinho preto
+      let snoutOffX = 0;
+      let snoutOffY = -7;
+      if (lia.facing === 'right') snoutOffX = 7;
+      else if (lia.facing === 'left') snoutOffX = -7;
+      else if (lia.facing === 'down') snoutOffY = -4;
+
+      // Focinho
+      ctx.beginPath();
+      ctx.ellipse(snoutOffX, snoutOffY, 3.5, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Olhos Vivos Cor de Âmbar
+      ctx.fillStyle = '#fbbf24';
       let eyeOffX = 0;
       if (lia.facing === 'right') eyeOffX = 2;
       else if (lia.facing === 'left') eyeOffX = -2;
 
       ctx.beginPath();
-      ctx.arc(eyeOffX - 2, -7, 1.3, 0, Math.PI * 2);
-      ctx.arc(eyeOffX + 3, -7, 1.3, 0, Math.PI * 2);
+      ctx.arc(eyeOffX - 3, -10, 1.6, 0, Math.PI * 2);
+      ctx.arc(eyeOffX + 3, -10, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupilas
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(eyeOffX - 3, -10, 0.8, 0, Math.PI * 2);
+      ctx.arc(eyeOffX + 3, -10, 0.8, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    ctx.fillStyle = '#d97706';
-    ctx.strokeStyle = '#92400e';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(0, -11, 14, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#b45309';
-    roundRect(ctx, -7, -19, 14, 9, 3);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#16a34a';
-    ctx.fillRect(-7, -13, 14, 2.5);
-
-    // Tag Lia
+    // 9. Tag "Lia"
     ctx.save();
     ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 1;
-    roundRect(ctx, -20, -38, 40, 16, 5);
+    roundRect(ctx, -20, -40, 40, 15, 5);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px -apple-system, sans-serif';
+    ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Lia', 0, -26);
+    ctx.fillText('Lia 🐺', 0, -29);
     ctx.restore();
 
     ctx.restore();
@@ -1437,7 +1235,7 @@
     roundRect(ctx, mapX + 6, mapY + 60, mapW - 12, 30, 4);
     ctx.fill();
 
-    // Sementes no Minimapa
+    // Sementes
     seeds.forEach(s => {
       if (!s.collected) {
         const syNorm = s.y / WORLD_HEIGHT;
@@ -1452,7 +1250,7 @@
       }
     });
 
-    // Guarda de Névoa no Minimapa (ponto vermelho de perigo)
+    // Onça-Pintada no minimapa (ponto vermelho)
     const gyNorm = fogGuard.y / WORLD_HEIGHT;
     const gxNorm = (fogGuard.x - 90) / 800;
     const gmX = mapX + 8 + gxNorm * (mapW - 16);
@@ -1462,7 +1260,7 @@
     ctx.arc(gmX, gmY, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Posição de Lia (ponto pulsante ciano)
+    // Lobo-Guará Lia no minimapa (ponto pulsante ciano)
     const normY = lia.y / WORLD_HEIGHT;
     const markerY = mapY + 6 + normY * (mapH - 14);
     const pulse = Math.sin(globalAnimTimer * 5) * 1.5;
@@ -1652,12 +1450,10 @@
   bindTouch(btnLeft, 'left');
   bindTouch(btnRight, 'right');
 
-  // Inicialização
   initSeeds();
   updateHUD();
   requestAnimationFrame(gameLoop);
 
-  // Expõe no escopo de testes
   window.__ILHA_VIVA__ = {
     getState: () => currentState,
     getLia: () => ({ ...lia }),
