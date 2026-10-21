@@ -183,6 +183,12 @@
   ];
 
   // Guarda de Névoa: Onça-Pintada Espectral
+  // Ajustado de 110 para 80 px/s para que tanto a velocidade base (0 a 4 coletas: 80 px/s)
+  // quanto o aumento de +10% (5 a 9 coletas: 88 px/s) permaneçam abaixo da velocidade de Lia (105 px/s).
+  const GUARD_BASE_SPEED = 80;
+  const GUARD_BOOST_MULTIPLIER = 1.1;
+  const GUARD_TURN_WARN_SECONDS = 0.6;
+
   const GUARD_START = {
     x: 320,
     y: 340,
@@ -190,7 +196,7 @@
     maxX: 680,
     width: 48,
     height: 38,
-    speed: 110,
+    speed: GUARD_BASE_SPEED,
     direction: 1
   };
 
@@ -202,7 +208,12 @@
     width: GUARD_START.width,
     height: GUARD_START.height,
     speed: GUARD_START.speed,
-    direction: GUARD_START.direction
+    direction: GUARD_START.direction,
+    boostNotified: false,
+    timeToTurn: (GUARD_START.maxX - GUARD_START.x) / GUARD_START.speed,
+    isTurningSoon: false,
+    nextDirection: -GUARD_START.direction,
+    turnWarningProgress: 0
   };
 
   // 10 Sementes Resgatáveis
@@ -699,6 +710,39 @@
     return seeds.filter(s => s.collected).length;
   }
 
+  function updateGuardTurnWarning() {
+    const distToTurn = fogGuard.direction === 1
+      ? (fogGuard.maxX - fogGuard.x)
+      : (fogGuard.x - fogGuard.minX);
+    const timeToTurn = fogGuard.speed > 0 ? Math.max(0, distToTurn / fogGuard.speed) : Infinity;
+
+    fogGuard.timeToTurn = timeToTurn;
+    fogGuard.isTurningSoon = (timeToTurn <= GUARD_TURN_WARN_SECONDS);
+    fogGuard.nextDirection = -fogGuard.direction;
+    fogGuard.turnWarningProgress = fogGuard.isTurningSoon
+      ? Math.max(0, Math.min(1, 1 - (timeToTurn / GUARD_TURN_WARN_SECONDS)))
+      : 0;
+  }
+
+  function updateGuardSpeedAndNotice() {
+    const count = getCollectedCount();
+    if (count >= 5 && count <= 9) {
+      fogGuard.speed = Math.round(GUARD_START.speed * GUARD_BOOST_MULTIPLIER * 100) / 100;
+      if (!fogGuard.boostNotified) {
+        fogGuard.boostNotified = true;
+        showPlaceDiscovery({
+          icon: '⚡',
+          fullName: 'Guarda mais rápido',
+          description: 'A atenção da névoa aumentou (+10% de velocidade). Observe a seta e desvie!'
+        });
+      }
+    } else if (count < 5) {
+      fogGuard.speed = GUARD_START.speed;
+      fogGuard.boostNotified = false;
+    }
+    updateGuardTurnWarning();
+  }
+
   function parseHex(hex) {
     let c = hex.replace('#', '');
     if (c.length === 3) c = c.split('').map(x => x + x).join('');
@@ -770,7 +814,11 @@
       btnStart.disabled = false;
       if (btnPlant) btnPlant.classList.add('hidden');
     } else if (currentState === State.PLAYING) {
-      statusMessage.textContent = `Missão: Coletadas ${count} de 10 sementes`;
+      if (count >= 5 && count < 10) {
+        statusMessage.textContent = `Guarda mais rápido — Coletadas ${count} de 10 sementes`;
+      } else {
+        statusMessage.textContent = `Missão: Coletadas ${count} de 10 sementes`;
+      }
       statusDot.className = 'status-dot';
       btnPause.disabled = false;
       btnPause.textContent = 'Pausar (P)';
@@ -1021,7 +1069,10 @@
 
     fogGuard.x = GUARD_START.x;
     fogGuard.y = GUARD_START.y;
+    fogGuard.speed = GUARD_START.speed;
     fogGuard.direction = GUARD_START.direction;
+    fogGuard.boostNotified = false;
+    updateGuardTurnWarning();
 
     keys.up = false;
     keys.down = false;
@@ -1075,6 +1126,8 @@
   }
 
   function update(dt) {
+    if (currentState === State.PAUSED) return;
+
     globalAnimTimer += dt;
 
     updateCamera(dt);
@@ -1180,6 +1233,7 @@
         fogGuard.x = fogGuard.minX;
         fogGuard.direction = 1;
       }
+      updateGuardTurnWarning();
 
       // Colisão com a Onça
       const gLeft = fogGuard.x - fogGuard.width / 2;
@@ -1219,6 +1273,7 @@
       }
 
       if (newlyCollected) {
+        updateGuardSpeedAndNotice();
         updateHUD();
         const currentCount = getCollectedCount();
         if (currentCount === seeds.length) {
@@ -2475,6 +2530,29 @@
     ctx.lineTo(fogGuard.maxX, fogGuard.y);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Marcador de antecipação no limite de virada (0,6s antes de inverter)
+    if (fogGuard.isTurningSoon) {
+      const turnX = fogGuard.direction === 1 ? fogGuard.maxX : fogGuard.minX;
+      const p = fogGuard.turnWarningProgress;
+      const dSize = 7 + Math.sin(p * Math.PI) * 3;
+
+      ctx.save();
+      ctx.translate(turnX, fogGuard.y);
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.85)';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -dSize);
+      ctx.lineTo(dSize, 0);
+      ctx.lineTo(0, dSize);
+      ctx.lineTo(-dSize, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
@@ -2491,17 +2569,47 @@
     const stride = Math.sin(globalAnimTimer * 8.5);
     const isFacingRight = fogGuard.direction === 1;
     const dir = isFacingRight ? 1 : -1;
+    const warnActive = fogGuard.isTurningSoon;
+    const warnProg = fogGuard.turnWarningProgress || 0;
+    const warnPulse = warnActive ? Math.sin(warnProg * Math.PI) : 0;
 
-    // 1. Aura Espectral de Névoa em Camadas e Espirais de Bruma
-    const mistGrad = ctx.createRadialGradient(0, 0, 8, 0, 0, 44 + pulse);
-    mistGrad.addColorStop(0, 'rgba(250, 204, 21, 0.65)');
-    mistGrad.addColorStop(0.45, 'rgba(56, 189, 248, 0.38)');
-    mistGrad.addColorStop(0.75, 'rgba(148, 163, 184, 0.22)');
-    mistGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    // 1. Aura Espectral de Névoa em Camadas e Brilho Intensificado no Aviso (0,6s antes da virada)
+    const auraRadius = (warnActive ? 48 + warnPulse * 8 : 44) + pulse;
+    const mistGrad = ctx.createRadialGradient(0, 0, 8, 0, 0, auraRadius);
+    if (warnActive) {
+      mistGrad.addColorStop(0, 'rgba(255, 255, 255, 0.78)');
+      mistGrad.addColorStop(0.38, 'rgba(250, 204, 21, 0.62)');
+      mistGrad.addColorStop(0.72, 'rgba(56, 189, 248, 0.42)');
+      mistGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    } else {
+      mistGrad.addColorStop(0, 'rgba(250, 204, 21, 0.65)');
+      mistGrad.addColorStop(0.45, 'rgba(56, 189, 248, 0.38)');
+      mistGrad.addColorStop(0.75, 'rgba(148, 163, 184, 0.22)');
+      mistGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    }
     ctx.fillStyle = mistGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, 44 + pulse, 0, Math.PI * 2);
+    ctx.arc(0, 0, auraRadius, 0, Math.PI * 2);
     ctx.fill();
+
+    // Mudança de Forma no Aviso de Virada: Moldura em Losango Tracejado de Alto Contraste (não depende só de cor)
+    if (warnActive) {
+      const diamondW = 34 + warnPulse * 6;
+      const diamondH = 24 + warnPulse * 5;
+      ctx.save();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.2;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(0, -diamondH);
+      ctx.lineTo(diamondW, 0);
+      ctx.lineTo(0, diamondH);
+      ctx.lineTo(-diamondW, 0);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     // Partículas de névoa flutuando ao redor da onça
     ctx.fillStyle = 'rgba(186, 230, 253, 0.45)';
@@ -2521,7 +2629,10 @@
     ctx.fill();
 
     ctx.save();
-    ctx.scale(dir, 1); // Espelha perfeitamente conforme a direção da patrulha
+    // Breve compressão de forma quando prepara o impulso de virada (0,6s antes)
+    const pivotScaleX = warnActive ? (1 - 0.12 * warnPulse) : 1;
+    const pivotScaleY = warnActive ? (1 + 0.08 * warnPulse) : 1;
+    ctx.scale(dir * pivotScaleX, pivotScaleY); // Espelha perfeitamente conforme a direção da patrulha
 
     // 3. Cauda Felina Longa, Grossa e Sinuosa com Anéis e Ponta Preta
     const tailSway = Math.sin(globalAnimTimer * 4.5) * 4;
@@ -2738,6 +2849,47 @@
     ctx.fill();
     ctx.stroke();
     ctx.restore();
+
+    // 10. Sinal de Antecipação de Virada (0,6s antes): Seta da Próxima Direção + Emblema Geométrico
+    if (warnActive) {
+      const nextDir = fogGuard.nextDirection; // -1 (esquerda) ou 1 (direita)
+      const shift = warnPulse * 3;
+
+      ctx.save();
+      // Seta dupla apontando para a direção da próxima virada
+      ctx.fillStyle = '#fef08a';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      if (nextDir === 1) {
+        ctx.moveTo(24 + shift, -7);
+        ctx.lineTo(35 + shift, 0);
+        ctx.lineTo(24 + shift, 7);
+        ctx.closePath();
+      } else {
+        ctx.moveTo(-24 - shift, -7);
+        ctx.lineTo(-35 - shift, 0);
+        ctx.lineTo(-24 - shift, 7);
+        ctx.closePath();
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Etiqueta compacta acessível indicando a próxima virada (não esconde Lia e não depende só de cor)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, -32, -39, 64, 15, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(nextDir === -1 ? '◆ VIRA ◀' : '◆ VIRA ▶', 0, -31.5);
+      ctx.restore();
+    }
 
     ctx.restore();
   }
@@ -3454,6 +3606,7 @@
         s.collected = true;
         spawnSparkle(s.x, s.y);
         playSoundCollect();
+        updateGuardSpeedAndNotice();
         updateHUD();
         if (getCollectedCount() === seeds.length) triggerVictory();
       }
