@@ -5,7 +5,7 @@
 - **Gênero / Estilo**: Aventura 2D em visão top-down / isométrica estilizada via Canvas.
 - **Protagonista**: Lia, uma exploradora representada por um lobo-guará com mochila.
 - **Inimigo / Perigo**: Um fantasma na forma de uma onça-pintada espectral patrulhando a névoa do bosque.
-- **Cenário**: Praia e bosque ligados por uma ponte larga de madeira sobre o mar.
+- **Cenário**: **Cerrado** (ao sul) e **Área de Mata Nativa** (ao norte) ligados por uma ponte larga de madeira sobre o rio com vitórias-régias.
   - Lia deve permanecer sempre em terra firme (limites intransponíveis de água/obstáculos).
 - **Inimigo / Perigo**:
   - Um **Guarda de Névoa** patrulha ativamente o bosque.
@@ -32,6 +32,8 @@
   - Botões virtuais na tela para suporte a telas sensíveis ao toque (touch).
 - **Ações e Atalhos**:
   - Tecla `P`: Pausa e retoma o jogo.
+  - Tecla `M`: Alterna Silenciar / Ativar áudio.
+  - Tecla `E`: Realiza ação de plantio nos canteiros.
   - Tecla `Espaço`: Reservada para o escudo opcional.
 - **Navegação por Teclado e Foco**:
   - Todos os botões interativos da interface devem ser plenamente operáveis via teclado (foco por `Tab`, ativação por `Enter`/`Espaço`).
@@ -42,4 +44,13 @@
 ## 5. Diretrizes para Próximos Passos
 - **Preservação**: Preservar tudo o que já estiver funcionando ao adicionar ou alterar mecânicas.
 - **Testes e Verificação**: Testar rigorosamente qualquer mudança implementada antes de concluir o ciclo.
-- **Estado Atual**: Decisões de design, escopo e requisitos arquiteturais devidamente registradas. Implementação do código ainda não iniciada.
+- **Estado Atual**:
+  - Fase de Resgate (10 sementes com Lobo-Guará Lia e Onça-Pintada Espectral de guarda) totalmente implementada e preservada.
+  - Ilha inicia em estado devastado (vegetação queimada, árvores sem folhas).
+  - Vitória libera a etapa pacífica de Plantio com 10 sementes na reserva e 14 canteiros livres.
+  - Ação de plantio por tecla `E`, clique ou toque gasta 1 semente por ação e gera um broto.
+  - Revitalização gradual do cenário a cada plantio (copas das árvores, cores vivas, borboletas e pássaros).
+  - Conclusão ("Sua ilha está voltando à vida") e reinício completo testados com 100% de sucesso.
+  - Sistema de Áudio Procedural (Web Audio API) com 3 sons distintos (coleta, derrota, conclusão dos plantios) e loop atmosférico de floresta (vento dinâmico, pássaros e harmonia suave).
+  - Botão Silenciar (e tecla `M`) com persistência ao reiniciar, suspensão instantânea na pausa e ausência de acúmulo de sons na retomada.
+  - Sinais visuais 100% preservados, garantindo plena jogabilidade e acessibilidade com áudio ativado ou desativado.
