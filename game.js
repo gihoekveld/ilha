@@ -2153,32 +2153,156 @@
 
       if (c.planted) {
         const growth = c.growthAnim;
-        const sproutH = 14 * growth;
-        const sway = Math.sin(globalAnimTimer * 3 + c.x) * 1.5;
+        const sproutH = 18 * growth;
+        const sway = Math.sin(globalAnimTimer * 2.8 + c.x * 0.05) * 1.8;
+        const leafPulse = 0.85 + Math.sin(globalAnimTimer * 3.5 + c.y * 0.04) * 0.15;
 
-        ctx.strokeStyle = '#16a34a';
-        ctx.lineWidth = 2.5;
+        // --- Caule principal com curva suave ---
+        ctx.strokeStyle = '#15803d';
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.quadraticCurveTo(sway, -sproutH / 2, sway, -sproutH);
+        ctx.moveTo(0, 2);
+        ctx.quadraticCurveTo(sway * 0.5, -sproutH * 0.5, sway, -sproutH);
         ctx.stroke();
 
+        // Linha de brilho no caule
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.5 * growth;
+        ctx.beginPath();
+        ctx.moveTo(0.5, 1);
+        ctx.quadraticCurveTo(sway * 0.5 + 0.5, -sproutH * 0.5, sway + 0.5, -sproutH);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // --- Folha esquerda com nervura ---
+        const leafScale = leafPulse * growth;
+        const lx = -5 + sway * 0.6;
+        const ly = -sproutH * 0.55;
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(-0.5);
+        // Folha
+        ctx.fillStyle = '#16a34a';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 6.5 * leafScale, 3 * leafScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Nervura central
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.7 * growth;
+        ctx.beginPath();
+        ctx.moveTo(-5 * leafScale, 0);
+        ctx.lineTo(5 * leafScale, 0);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        // --- Folha direita com nervura ---
+        const rx = 5 + sway * 0.8;
+        const ry = -sproutH * 0.65;
+        ctx.save();
+        ctx.translate(rx, ry);
+        ctx.rotate(0.5);
         ctx.fillStyle = '#22c55e';
         ctx.beginPath();
-        ctx.ellipse(-5 + sway, -sproutH + 3, 5 * growth, 2.5 * growth, -0.4, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, 7 * leafScale, 3.2 * leafScale, 0, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.fillStyle = '#4ade80';
+        ctx.strokeStyle = '#86efac';
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.65 * growth;
         ctx.beginPath();
-        ctx.ellipse(5 + sway, -sproutH + 3, 5 * growth, 2.5 * growth, 0.4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(-5.5 * leafScale, 0);
+        ctx.lineTo(5.5 * leafScale, 0);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.restore();
 
-        if (plantProgress >= 0.5) {
-          ctx.fillStyle = '#fde047';
+        // --- Folhinha no topo ---
+        if (growth > 0.5) {
+          ctx.save();
+          ctx.translate(sway, -sproutH - 1);
+          ctx.rotate(Math.sin(globalAnimTimer * 4 + c.x) * 0.2);
+          ctx.fillStyle = '#4ade80';
           ctx.beginPath();
-          ctx.arc(sway, -sproutH - 1, 2 * growth, 0, Math.PI * 2);
+          ctx.ellipse(0, -2.5 * growth, 3.5 * growth, 5 * growth, 0, 0, Math.PI * 2);
           ctx.fill();
+          ctx.restore();
+        }
+
+        // --- Florzinha amarela após metade dos plantios ---
+        if (plantProgress >= 0.5 && growth > 0.7) {
+          const flowerBob = Math.sin(globalAnimTimer * 4 + c.x) * 1.2;
+          ctx.save();
+          ctx.translate(sway, -sproutH - 6 + flowerBob);
+          // Pétalas
+          const petalColors = ['#fde047', '#fbbf24', '#facc15'];
+          for (let p = 0; p < 5; p++) {
+            const pa = (p / 5) * Math.PI * 2;
+            ctx.fillStyle = petalColors[p % petalColors.length];
+            ctx.beginPath();
+            ctx.ellipse(
+              Math.cos(pa) * 3.2 * growth,
+              Math.sin(pa) * 3.2 * growth,
+              2.2 * growth, 1.5 * growth, pa, 0, Math.PI * 2
+            );
+            ctx.fill();
+          }
+          // Centro da flor
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.arc(0, 0, 2 * growth, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // --- Vegetação de desfecho: tufos extras só após 10 plantios ---
+        if (currentState === State.CONCLUDED && growth > 0.85) {
+          const region = c.region;
+          ctx.globalAlpha = Math.min(1, (growth - 0.85) / 0.15);
+
+          if (region === 'forest') {
+            // Mata: arbustos arredondados com camadas
+            const bushColors = ['#064e3b', '#065f46', '#047857', '#059669', '#10b981'];
+            const offsets = [
+              { x: -14, y: 8, r: 7 }, { x: 14, y: 9, r: 6.5 },
+              { x: -8, y: 12, r: 6 }, { x: 8, y: 13, r: 5.5 },
+              { x: 0, y: 10, r: 8 }
+            ];
+            offsets.forEach((o, idx) => {
+              ctx.fillStyle = bushColors[idx % bushColors.length];
+              ctx.beginPath();
+              ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+              ctx.fill();
+              // Brilho suave no topo do arbusto
+              ctx.fillStyle = 'rgba(167, 243, 208, 0.25)';
+              ctx.beginPath();
+              ctx.arc(o.x - 1, o.y - 2, o.r * 0.45, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          } else {
+            // Cerrado: gramíneas e arbustos rasteiros xerófilos
+            const grassColors = ['#78350f', '#92400e', '#b45309', '#ca8a04', '#eab308'];
+            for (let g = -2; g <= 2; g++) {
+              const gx = g * 6 + Math.sin(g * 1.3) * 2;
+              const gColor = grassColors[(g + 2) % grassColors.length];
+              ctx.strokeStyle = gColor;
+              ctx.lineWidth = 1.8;
+              ctx.lineCap = 'round';
+              ctx.beginPath();
+              ctx.moveTo(gx, 8);
+              ctx.quadraticCurveTo(gx + Math.sin(globalAnimTimer * 2 + g) * 2, 2, gx + 1, -4);
+              ctx.stroke();
+              // Folhinha lateral
+              ctx.fillStyle = gColor;
+              ctx.beginPath();
+              ctx.ellipse(gx + 3, 0, 3, 1.4, 0.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          ctx.globalAlpha = 1;
         }
       } else if (currentState === State.PLANTING || currentState === State.CONCLUDED) {
         const dist = Math.hypot(lia.x - c.x, lia.y - c.y);
