@@ -54,3 +54,6 @@
   - Sistema de Áudio Procedural (Web Audio API) com 3 sons distintos (coleta, derrota, conclusão dos plantios) e loop atmosférico de floresta (vento dinâmico, pássaros e harmonia suave).
   - Botão Silenciar (e tecla `M`) com persistência ao reiniciar, suspensão instantânea na pausa e ausência de acúmulo de sons na retomada.
   - Sinais visuais 100% preservados, garantindo plena jogabilidade e acessibilidade com áudio ativado ou desativado.
+  - Sistema de 20 Sementes e Pontuação: 10 sementes comuns (1 pt, fora da patrulha) e 10 sementes raras (3 pts, próximas da patrulha); coletar 10 encerra o resgate. Títulos de vitória: "Guardião da ilha" (≥ 20 pts) e "Recuperação básica" (< 20 pts).
+  - Segundo Guardião Celeste: patrulha contínua em ciclo pelas sementes raras na mesma velocidade da Lia (105 px/s).
+  - Sistema de Escudo Protetor: 3 unidades por tentativa, ativado por tecla `Espaço` ou botão/toque `Escudo`, duração de 3 segundos com barreira visual e rótulo. Proteção contra repetição ao segurar tecla e contra uso simultâneo ou com reserva zerada. A pausa congela a contagem. Contato com os guardas durante a proteção repele o inimigo de volta à origem com som procedural de desgosto. Escudos ocultos e desativados na fase de plantio.

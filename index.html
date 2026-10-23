@@ -24,6 +24,18 @@
           <span id="seedsCollected" class="seed-count">0</span>/<span id="seedsTotal" class="seed-count">10</span>
         </div>
 
+        <div class="seed-counter-badge points-badge" id="pointsBadge" aria-label="Pontuação da missão">
+          <span class="seed-icon" id="pointsBadgeIcon" aria-hidden="true">⭐</span>
+          <span id="pointsBadgeLabel">Pontos:</span>
+          <span id="scoreValue" class="seed-count">0</span>
+        </div>
+
+        <div class="seed-counter-badge shield-badge" id="shieldBadge" aria-label="Escudos disponíveis">
+          <span class="seed-icon" id="shieldBadgeIcon" aria-hidden="true">🛡️</span>
+          <span id="shieldBadgeLabel">Escudos:</span>
+          <span id="shieldsAvailable" class="seed-count">3</span>/<span class="seed-count">3</span>
+        </div>
+
         <div class="hud-status-badge">
           <span class="status-dot" id="statusDot" aria-hidden="true"></span>
           <span id="statusMessage" role="status" aria-live="polite">Resgate dez sementes para devolver vida à ilha</span>
@@ -33,6 +45,7 @@
       <div class="hud-right">
         <div class="hud-actions">
           <button id="btnPlant" class="ui-btn plant-btn hidden" type="button" aria-label="Iniciar etapa de plantio">Plantar 🌿</button>
+          <button id="btnShield" class="ui-btn shield-btn" type="button" aria-label="Ativar escudo por 3 segundos (tecla Espaço)">🛡️ Escudo (Espaço)</button>
           <button id="btnMute" class="ui-btn" type="button" aria-label="Silenciar áudio (tecla M)" title="Silenciar ou ativar áudio">🔊 Som</button>
           <button id="btnStart" class="ui-btn primary-btn" type="button" aria-label="Iniciar exploração">Iniciar</button>
           <button id="btnPause" class="ui-btn" type="button" aria-label="Pausar ou retomar o jogo (tecla P)">Pausar (P)</button>
@@ -58,13 +71,14 @@
           <button id="btnRight" class="dpad-btn right" type="button" aria-label="Mover Lia para a direita">▶</button>
         </div>
       </div>
-      <!-- Botão de Ação Virtual para Plantio Touch no Mobile -->
+      <!-- Botões de Ação Virtual para Touch no Mobile -->
+      <button id="btnTouchShield" class="action-plant-btn shield-touch-btn" type="button" aria-label="Ativar escudo por 3 segundos (tecla Espaço)">🛡️ Escudo</button>
       <button id="btnActionPlant" class="action-plant-btn hidden" type="button" aria-label="Plantar semente no canteiro (tecla E)">🌱 Plantar (E)</button>
     </section>
 
     <!-- Legenda Discreta no Rodapé -->
     <div class="bottom-legend" id="bottomLegend">
-      <span><strong>WASD</strong> ou <strong>Setas</strong> para mover • <strong>P</strong> pausa/retoma • <strong>M</strong> silencia • <strong>E</strong> planta</span>
+      <span><strong>WASD</strong> mover • <strong>Espaço</strong> escudo (3s) • <strong>P</strong> pausa • <strong>M</strong> silencia • <strong>E</strong> planta</span>
     </div>
 
     <!-- Overlay de Pausa / Vitória / Conclusão -->

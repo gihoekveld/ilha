@@ -36,10 +36,17 @@
   const seedBadge = document.getElementById('seedBadge');
   const seedBadgeIcon = document.getElementById('seedBadgeIcon');
   const seedBadgeLabel = document.getElementById('seedBadgeLabel');
+  const scoreValueEl = document.getElementById('scoreValue');
+  const pointsBadge = document.getElementById('pointsBadge');
+  const shieldBadge = document.getElementById('shieldBadge');
+  const shieldBadgeLabel = document.getElementById('shieldBadgeLabel');
+  const shieldsAvailableEl = document.getElementById('shieldsAvailable');
   const statusMessage = document.getElementById('statusMessage');
   const statusDot = document.getElementById('statusDot');
 
   const btnPlant = document.getElementById('btnPlant');
+  const btnShield = document.getElementById('btnShield');
+  const btnTouchShield = document.getElementById('btnTouchShield');
   const btnMute = document.getElementById('btnMute');
   const btnStart = document.getElementById('btnStart');
   const btnPause = document.getElementById('btnPause');
@@ -216,20 +223,173 @@
     turnWarningProgress: 0
   };
 
-  // 10 Sementes Resgatáveis
-  const SEED_DEFINITIONS = [
-    { id: 1, region: 'beach', x: 260, y: 1200, name: 'Semente da Brisa Marinha' },
-    { id: 2, region: 'beach', x: 710, y: 1190, name: 'Semente da Maré Mansa' },
-    { id: 3, region: 'beach', x: 350, y: 950, name: 'Semente das Dunas' },
-    { id: 4, region: 'beach', x: 610, y: 960, name: 'Semente do Sol Costeiro' },
+  // Pontuação da missão: Comum = 1 ponto, Rara = 3 pontos
+  let currentScore = 0;
 
-    { id: 5, region: 'forest', x: 210, y: 500, name: 'Semente do Musgo Verde' },
-    { id: 6, region: 'forest', x: 750, y: 490, name: 'Semente do Carvalho' },
-    { id: 7, region: 'forest', x: 480, y: 420, name: 'Semente da Clareira' },
-    { id: 8, region: 'forest', x: 240, y: 280, name: 'Semente do Broto Silvestre' },
-    { id: 9, region: 'forest', x: 720, y: 280, name: 'Semente da Seiva Antiga' },
-    { id: 10, region: 'forest', x: 480, y: 200, name: 'Semente do Coração da Ilha' }
+  // Sistema de Escudo Protetor (ESCUDO)
+  // Três escudos por resgate; cada uso dura 3 segundos protegendo do contato com o guarda
+  const MAX_SHIELDS = 3;
+  const SHIELD_DURATION = 3.0;
+  let shieldsAvailable = MAX_SHIELDS;
+  let shieldActive = false;
+  let shieldTimeLeft = 0;
+  let spaceKeyHeld = false;
+
+  // ==========================================================
+  // GERENCIADOR DE RECURSOS VISUAIS (PNGs COM FALLBACK EM CANVAS)
+  // Preserva proporções sem deformar e desvincula transparências de colisões.
+  // ==========================================================
+  const gameAssets = {
+    lia: {
+      key: 'lia',
+      name: 'Lia (Lobo-Guará)',
+      paths: ['assets/lia.png', 'assets/lobo_guara.png', 'assets/lia_lobo_guara.png'],
+      targetWidth: 44,
+      targetHeight: 46,
+      img: null,
+      loaded: false,
+      failed: false
+    },
+    guarda: {
+      key: 'guarda',
+      name: 'Guarda (Onça-Pintada Espectral)',
+      paths: ['assets/guarda.png', 'assets/onca.png', 'assets/onca_pintada.png'],
+      targetWidth: 56,
+      targetHeight: 42,
+      img: null,
+      loaded: false,
+      failed: false
+    },
+    semente: {
+      key: 'semente',
+      name: 'Semente',
+      paths: ['assets/semente.png', 'assets/seed.png', 'assets/semente_comum.png'],
+      targetWidth: 30,
+      targetHeight: 32,
+      img: null,
+      loaded: false,
+      failed: false
+    }
+  };
+
+  function loadSingleAsset(asset) {
+    if (typeof Image === 'undefined') {
+      asset.failed = true;
+      return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+      let pathIndex = 0;
+
+      function tryNextPath() {
+        if (pathIndex >= asset.paths.length) {
+          asset.loaded = false;
+          asset.failed = true;
+          resolve(false);
+          return;
+        }
+
+        const currentPath = asset.paths[pathIndex++];
+        const img = new Image();
+        img.onload = () => {
+          asset.img = img;
+          asset.loaded = true;
+          asset.failed = false;
+          asset.activePath = currentPath;
+          resolve(true);
+        };
+        img.onerror = () => {
+          tryNextPath();
+        };
+        img.src = currentPath;
+      }
+
+      tryNextPath();
+    });
+  }
+
+  function loadGameAssets() {
+    return Promise.all([
+      loadSingleAsset(gameAssets.lia),
+      loadSingleAsset(gameAssets.guarda),
+      loadSingleAsset(gameAssets.semente)
+    ]);
+  }
+
+  function drawAssetImage(asset, targetW, targetH, flipX = false) {
+    if (!asset || !asset.loaded || !asset.img) return false;
+    const img = asset.img;
+    const naturalW = img.naturalWidth || img.width;
+    const naturalH = img.naturalHeight || img.height;
+    if (!naturalW || !naturalH) return false;
+
+    // Preserva a proporção exata sem deformar
+    const scale = Math.min(targetW / naturalW, targetH / naturalH);
+    const drawW = naturalW * scale;
+    const drawH = naturalH * scale;
+
+    ctx.save();
+    if (flipX) {
+      ctx.scale(-1, 1);
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+    return true;
+  }
+
+  // 20 Sementes Resgatáveis: 10 comuns fora da patrulha e 10 raras próximas dela
+  const SEED_DEFINITIONS = [
+    // 10 Sementes Comuns (1 ponto cada, fora da rota de patrulha do guarda)
+    { id: 1, type: 'comum', points: 1, region: 'beach', x: 260, y: 1200, name: 'Semente da Brisa Marinha' },
+    { id: 2, type: 'comum', points: 1, region: 'beach', x: 710, y: 1190, name: 'Semente da Maré Mansa' },
+    { id: 3, type: 'comum', points: 1, region: 'beach', x: 350, y: 950, name: 'Semente das Dunas' },
+    { id: 4, type: 'comum', points: 1, region: 'beach', x: 610, y: 960, name: 'Semente do Sol Costeiro' },
+    { id: 5, type: 'comum', points: 1, region: 'beach', x: 480, y: 1100, name: 'Semente da Chapada Dourada' },
+    { id: 6, type: 'comum', points: 1, region: 'forest', x: 210, y: 510, name: 'Semente do Musgo Verde' },
+    { id: 7, type: 'comum', points: 1, region: 'forest', x: 750, y: 500, name: 'Semente do Carvalho' },
+    { id: 8, type: 'comum', points: 1, region: 'forest', x: 240, y: 190, name: 'Semente do Broto Silvestre' },
+    { id: 9, type: 'comum', points: 1, region: 'forest', x: 720, y: 190, name: 'Semente da Seiva Antiga' },
+    { id: 10, type: 'comum', points: 1, region: 'forest', x: 480, y: 200, name: 'Semente do Coração da Ilha' },
+
+    // 10 Sementes Raras (3 pontos cada, dispostas em ciclo ao redor da patrulha)
+    { id: 11, type: 'rara', points: 3, region: 'forest', x: 310, y: 310, name: 'Semente Rara da Aurora' },
+    { id: 12, type: 'rara', points: 3, region: 'forest', x: 390, y: 300, name: 'Semente Rara da Névoa Alta' },
+    { id: 13, type: 'rara', points: 3, region: 'forest', x: 480, y: 295, name: 'Semente Rara do Vórtice' },
+    { id: 14, type: 'rara', points: 3, region: 'forest', x: 570, y: 300, name: 'Semente Rara da Luz Filtrada' },
+    { id: 15, type: 'rara', points: 3, region: 'forest', x: 650, y: 310, name: 'Semente Rara da Borda Leste' },
+    { id: 16, type: 'rara', points: 3, region: 'forest', x: 650, y: 375, name: 'Semente Rara do Crepúsculo' },
+    { id: 17, type: 'rara', points: 3, region: 'forest', x: 570, y: 385, name: 'Semente Rara do Cristal' },
+    { id: 18, type: 'rara', points: 3, region: 'forest', x: 480, y: 390, name: 'Semente Rara da Sombra' },
+    { id: 19, type: 'rara', points: 3, region: 'forest', x: 390, y: 385, name: 'Semente Rara do Eco' },
+    { id: 20, type: 'rara', points: 3, region: 'forest', x: 310, y: 375, name: 'Semente Rara da Borda Oeste' }
   ];
+
+  // Rota de Patrulha Cíclica do Segundo Guardião (Risco Extra)
+  // Anda de semente rara em semente rara completando o ciclo contínuo com velocidade de Lia (105 px/s)
+  const RARE_SEED_WAYPOINTS = SEED_DEFINITIONS.filter(s => s.type === 'rara').map(s => ({ x: s.x, y: s.y }));
+
+  const SECOND_GUARD_START = {
+    x: RARE_SEED_WAYPOINTS[0].x,
+    y: RARE_SEED_WAYPOINTS[0].y,
+    targetIndex: 1,
+    width: 44,
+    height: 44,
+    speed: 105, // Mesma velocidade de Lia (105 px/s)
+    direction: 1
+  };
+
+  const secondGuard = {
+    x: SECOND_GUARD_START.x,
+    y: SECOND_GUARD_START.y,
+    targetIndex: SECOND_GUARD_START.targetIndex,
+    width: SECOND_GUARD_START.width,
+    height: SECOND_GUARD_START.height,
+    speed: SECOND_GUARD_START.speed,
+    direction: SECOND_GUARD_START.direction,
+    angle: 0
+  };
 
   let seeds = [];
   let sparkles = [];
@@ -444,6 +604,38 @@
     } catch (e) {}
   }
 
+  // 2b. Barulho de Desgosto / Repulsa do Guarda ao bater no escudo protetor
+  function playGuardDisgustSound() {
+    if (!audioCtx || isMuted || audioCtx.state !== 'running' || currentState === State.PAUSED) return;
+    try {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+
+      // Tom áspero descendente (rosnado/grunhido felino de desgosto)
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(155, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.35);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(380, now);
+      filter.frequency.exponentialRampToValueAtTime(80, now + 0.35);
+      filter.Q.setValueAtTime(3.5, now);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch (e) {}
+  }
+
   // 3. Som de Conclusão dos Dez Plantios: Fanfarra maior arpejada
   function playSoundConclusion() {
     if (!audioCtx || isMuted || audioCtx.state !== 'running' || currentState === State.PAUSED) return;
@@ -612,9 +804,13 @@
   function initSeeds() {
     seeds = SEED_DEFINITIONS.map(def => ({
       id: def.id,
+      type: def.type,
+      points: def.points,
+      name: def.name,
+      region: def.region,
       x: def.x,
       y: def.y,
-      radius: 10,
+      radius: def.type === 'rara' ? 12 : 10,
       collected: false,
       glowTimer: Math.random() * Math.PI * 2
     }));
@@ -656,6 +852,56 @@
         color: palette[Math.floor(Math.random() * palette.length)]
       });
     }
+  }
+
+  function spawnShieldSparkles(x, y) {
+    const particleCount = 20;
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2 + Math.random() * 0.3;
+      const speed = 40 + Math.random() * 65;
+      sparkles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.7,
+        maxLife: 0.7,
+        size: 3.5 + Math.random() * 3,
+        color: Math.random() > 0.35 ? '#38bdf8' : '#e0f2fe'
+      });
+    }
+  }
+
+  function activateShield() {
+    if (currentState !== State.PLAYING) return false;
+    if (shieldActive) return false;
+    if (shieldsAvailable <= 0) {
+      showPlaceDiscovery({
+        icon: '⚠️',
+        fullName: 'Sem escudos restantes',
+        description: 'Você já utilizou os três escudos desta tentativa!'
+      });
+      return false;
+    }
+
+    shieldsAvailable -= 1;
+    shieldActive = true;
+    shieldTimeLeft = SHIELD_DURATION;
+
+    spawnShieldSparkles(lia.x, lia.y);
+    if (shieldBadge) {
+      shieldBadge.classList.add('pulse');
+      setTimeout(() => shieldBadge.classList.remove('pulse'), 300);
+    }
+
+    showPlaceDiscovery({
+      icon: '🛡️',
+      fullName: 'Escudo Protetor Ativo',
+      description: 'Lia está protegida por 3 segundos! Se o guarda tocar no escudo, será repelido.'
+    });
+
+    updateHUD();
+    return true;
   }
 
   function isWalkable(x, y, radius) {
@@ -763,6 +1009,50 @@
   function updateHUD() {
     const count = getCollectedCount();
 
+    if (scoreValueEl) {
+      scoreValueEl.textContent = currentScore;
+    }
+
+    // Atualiza badges de Escudo (ESCUDO)
+    if (shieldsAvailableEl) {
+      shieldsAvailableEl.textContent = shieldsAvailable;
+    }
+    if (shieldBadge) {
+      if (currentState === State.PLANTING || currentState === State.CONCLUDED) {
+        shieldBadge.classList.add('hidden');
+      } else {
+        shieldBadge.classList.remove('hidden');
+        if (shieldActive) {
+          shieldBadge.classList.add('active');
+          if (shieldBadgeLabel) shieldBadgeLabel.textContent = `Ativo (${shieldTimeLeft.toFixed(1)}s):`;
+        } else {
+          shieldBadge.classList.remove('active');
+          if (shieldBadgeLabel) shieldBadgeLabel.textContent = 'Escudos:';
+        }
+      }
+    }
+    if (btnShield) {
+      if (currentState === State.PLANTING || currentState === State.CONCLUDED) {
+        btnShield.classList.add('hidden');
+      } else {
+        btnShield.classList.remove('hidden');
+        btnShield.disabled = (shieldsAvailable <= 0 || shieldActive || currentState !== State.PLAYING);
+        if (shieldActive) {
+          btnShield.textContent = `🛡️ Ativo (${shieldTimeLeft.toFixed(1)}s)`;
+        } else {
+          btnShield.textContent = `🛡️ Escudo (${shieldsAvailable}/3)`;
+        }
+      }
+    }
+    if (btnTouchShield) {
+      if (currentState === State.PLANTING || currentState === State.CONCLUDED) {
+        btnTouchShield.classList.add('hidden');
+      } else {
+        btnTouchShield.classList.remove('hidden');
+        btnTouchShield.disabled = (shieldsAvailable <= 0 || shieldActive || currentState !== State.PLAYING);
+      }
+    }
+
     if (currentState === State.PLANTING || currentState === State.CONCLUDED) {
       if (seedBadgeIcon) seedBadgeIcon.textContent = '🌿';
       if (seedBadgeLabel) seedBadgeLabel.textContent = 'Reserva:';
@@ -788,7 +1078,7 @@
     if (seedBadgeIcon) seedBadgeIcon.textContent = '🌱';
     if (seedBadgeLabel) seedBadgeLabel.textContent = 'Sementes:';
     seedsCollectedEl.textContent = count;
-    seedsTotalEl.textContent = seeds.length;
+    seedsTotalEl.textContent = '10';
 
     if (currentState === State.DEFEATED) {
       statusMessage.textContent = 'A névoa alcançou você. Reinicie para tentar de novo.';
@@ -797,7 +1087,11 @@
       btnStart.disabled = true;
       if (btnPlant) btnPlant.classList.add('hidden');
     } else if (currentState === State.VICTORY) {
-      statusMessage.textContent = 'Resgate concluído! Dez sementes recuperadas. Clique em Plantar!';
+      if (currentScore >= 20) {
+        statusMessage.textContent = `Guardião da ilha (${currentScore} pts)! Clique em Plantar!`;
+      } else {
+        statusMessage.textContent = `Recuperação básica (${currentScore} pts)! Clique em Plantar!`;
+      }
       statusDot.className = 'status-dot gold';
       btnPause.disabled = true;
       btnStart.disabled = true;
@@ -815,9 +1109,9 @@
       if (btnPlant) btnPlant.classList.add('hidden');
     } else if (currentState === State.PLAYING) {
       if (count >= 5 && count < 10) {
-        statusMessage.textContent = `Guarda mais rápido — Coletadas ${count} de 10 sementes`;
+        statusMessage.textContent = `Guarda mais rápido — Coletadas ${count} de 10 sementes (${currentScore} pts)`;
       } else {
-        statusMessage.textContent = `Missão: Coletadas ${count} de 10 sementes`;
+        statusMessage.textContent = `Missão: Coletadas ${count} de 10 sementes (${currentScore} pts)`;
       }
       statusDot.className = 'status-dot';
       btnPause.disabled = false;
@@ -827,7 +1121,7 @@
     }
   }
 
-  function handleDefeat() {
+  function handleDefeat(customDesc) {
     currentState = State.DEFEATED;
 
     lia.isMoving = false;
@@ -840,7 +1134,7 @@
     playSoundDefeat();
 
     modalTitle.textContent = 'A névoa alcançou você';
-    modalDescription.textContent = 'A Onça-Pintada de névoa bloqueou seu avanço. Observe a seta indicativa e use a agilidade do lobo-guará para desviar!';
+    modalDescription.textContent = customDesc || 'A Onça-Pintada de névoa bloqueou seu avanço. Observe a seta indicativa e use a agilidade do lobo-guará para desviar!';
     if (modalPrimaryBtn) modalPrimaryBtn.style.display = 'none';
     if (modalPlantBtn) modalPlantBtn.classList.add('hidden');
     modalOverlay.classList.remove('hidden');
@@ -858,8 +1152,13 @@
     keys.left = false;
     keys.right = false;
 
-    modalTitle.textContent = 'Resgate concluído';
-    modalDescription.textContent = 'Lia resgatou todas as dez sementes da ilha! A terra devastada está pronta para renascer com o plantio. Clique no botão Plantar para revitalizar a ilha!';
+    if (currentScore >= 20) {
+      modalTitle.textContent = 'Guardião da ilha';
+      modalDescription.textContent = `Vitória com honras! Lia conquistou ${currentScore} pontos resgatando sementes raras e enfrentando os guardiões. A terra devastada está pronta para o plantio. Clique no botão Plantar!`;
+    } else {
+      modalTitle.textContent = 'Recuperação básica';
+      modalDescription.textContent = `Resgate concluído! Lia conquistou ${currentScore} pontos resgatando sementes comuns. A recuperação básica foi alcançada e a terra está pronta para renascer com o plantio!`;
+    }
     
     if (modalPrimaryBtn) modalPrimaryBtn.style.display = 'none';
     if (modalPlantBtn) {
@@ -879,6 +1178,8 @@
     seedsInReserve = 10;
     plantedCount = 0;
     plantProgress = 0;
+    shieldActive = false;
+    shieldTimeLeft = 0;
 
     initCanteiros();
 
@@ -1074,6 +1375,19 @@
     fogGuard.boostNotified = false;
     updateGuardTurnWarning();
 
+    // Restaura o sistema de escudos e guardiões
+    shieldsAvailable = MAX_SHIELDS;
+    shieldActive = false;
+    shieldTimeLeft = 0;
+    spaceKeyHeld = false;
+    currentScore = 0;
+
+    secondGuard.x = SECOND_GUARD_START.x;
+    secondGuard.y = SECOND_GUARD_START.y;
+    secondGuard.targetIndex = SECOND_GUARD_START.targetIndex;
+    secondGuard.direction = SECOND_GUARD_START.direction;
+    secondGuard.angle = 0;
+
     keys.up = false;
     keys.down = false;
     keys.left = false;
@@ -1225,6 +1539,14 @@
 
     // 2. Movimento da Onça-Pintada Espectral (Guarda) - apenas no resgate
     if (currentState === State.PLAYING) {
+      if (shieldActive) {
+        shieldTimeLeft = Math.max(0, shieldTimeLeft - dt);
+        if (shieldTimeLeft <= 0) {
+          shieldActive = false;
+          updateHUD();
+        }
+      }
+
       fogGuard.x += fogGuard.direction * fogGuard.speed * dt;
       if (fogGuard.x >= fogGuard.maxX) {
         fogGuard.x = fogGuard.maxX;
@@ -1247,12 +1569,78 @@
       const distY = lia.y - closestGY;
 
       if ((distX * distX + distY * distY) < (lia.radius * lia.radius)) {
-        handleDefeat();
-        return;
+        if (shieldActive) {
+          // Guarda repelido pelo escudo de volta para onde nasceu!
+          fogGuard.x = GUARD_START.x;
+          fogGuard.y = GUARD_START.y;
+          fogGuard.direction = GUARD_START.direction;
+          updateGuardTurnWarning();
+          playGuardDisgustSound();
+          spawnShieldSparkles(closestGX, closestGY);
+          showPlaceDiscovery({
+            icon: '💥',
+            fullName: 'Guarda Repelido!',
+            description: 'A Onça de névoa bateu no escudo e foi repelida para onde nasceu!'
+          });
+        } else {
+          handleDefeat('A Onça-Pintada de névoa bloqueou seu avanço. Observe a seta indicativa e use a agilidade do lobo-guará para desviar!');
+          return;
+        }
+      }
+
+      // 2b. Movimento do Segundo Guardião (Risco Extra: percorre ciclo contínuo das sementes raras com velocidade de Lia)
+      const targetWp = RARE_SEED_WAYPOINTS[secondGuard.targetIndex];
+      const gdx = targetWp.x - secondGuard.x;
+      const gdy = targetWp.y - secondGuard.y;
+      const gdist = Math.hypot(gdx, gdy);
+
+      if (gdist <= secondGuard.speed * dt + 2) {
+        secondGuard.x = targetWp.x;
+        secondGuard.y = targetWp.y;
+        secondGuard.targetIndex = (secondGuard.targetIndex + 1) % RARE_SEED_WAYPOINTS.length;
+      } else {
+        const gux = gdx / gdist;
+        const guy = gdy / gdist;
+        secondGuard.x += gux * secondGuard.speed * dt;
+        secondGuard.y += guy * secondGuard.speed * dt;
+        secondGuard.angle = Math.atan2(guy, gux);
+        if (Math.abs(gdx) > 2) {
+          secondGuard.direction = gdx > 0 ? 1 : -1;
+        }
+      }
+
+      // Colisão com o Segundo Guardião
+      const sgLeft = secondGuard.x - secondGuard.width / 2;
+      const sgRight = secondGuard.x + secondGuard.width / 2;
+      const sgTop = secondGuard.y - secondGuard.height / 2;
+      const sgBottom = secondGuard.y + secondGuard.height / 2;
+
+      const closestSGX = Math.max(sgLeft, Math.min(lia.x, sgRight));
+      const closestSGY = Math.max(sgTop, Math.min(lia.y, sgBottom));
+      const distSGX = lia.x - closestSGX;
+      const distSGY = lia.y - closestSGY;
+
+      if ((distSGX * distSGX + distSGY * distSGY) < (lia.radius * lia.radius)) {
+        if (shieldActive) {
+          secondGuard.x = SECOND_GUARD_START.x;
+          secondGuard.y = SECOND_GUARD_START.y;
+          secondGuard.targetIndex = SECOND_GUARD_START.targetIndex;
+          secondGuard.direction = SECOND_GUARD_START.direction;
+          playGuardDisgustSound();
+          spawnShieldSparkles(closestSGX, closestSGY);
+          showPlaceDiscovery({
+            icon: '💥',
+            fullName: 'Guardião Repelido!',
+            description: 'O Guardião Celeste bateu no escudo e foi repelido de volta ao ponto de partida!'
+          });
+        } else {
+          handleDefeat('O Guardião Celeste das sementes raras alcançou você. Cuidado ao passar próximo da patrulha!');
+          return;
+        }
       }
     }
 
-    // 3. Coleta de Sementes na Fase de Resgate
+    // 3. Coleta de Sementes na Fase de Resgate (qualquer 10 encerra o resgate)
     if (currentState === State.PLAYING) {
       let newlyCollected = false;
       for (const seed of seeds) {
@@ -1263,10 +1651,15 @@
 
           if ((dx * dx + dy * dy) <= (hitDistance * hitDistance)) {
             seed.collected = true;
+            currentScore += (seed.points || (seed.type === 'rara' ? 3 : 1));
             newlyCollected = true;
             spawnSparkle(seed.x, seed.y);
             playSoundCollect(); // Toca som curto de coleta
             seedBadge.classList.add('pulse');
+            if (pointsBadge) {
+              pointsBadge.classList.add('pulse');
+              setTimeout(() => pointsBadge.classList.remove('pulse'), 300);
+            }
             setTimeout(() => seedBadge.classList.remove('pulse'), 300);
           }
         }
@@ -1276,7 +1669,7 @@
         updateGuardSpeedAndNotice();
         updateHUD();
         const currentCount = getCollectedCount();
-        if (currentCount === seeds.length) {
+        if (currentCount >= 10) {
           triggerVictory();
           return;
         }
@@ -1327,6 +1720,7 @@
 
     if (currentState !== State.PLANTING && currentState !== State.CONCLUDED) {
       renderJaguarGuard();
+      renderSecondGuard();
     }
 
     renderManedWolfLia();
@@ -2381,38 +2775,106 @@
 
         const pulse = Math.sin(globalAnimTimer * 4 + seed.glowTimer) * 2;
         const currentR = seed.radius + pulse;
+        const isRare = seed.type === 'rara';
 
+        // 1. Sombra suave sob a semente
         ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.beginPath();
         ctx.ellipse(0, 9, 8, 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        // 2. Halo radiante característico (dourado para comum, celeste para rara)
         const haloGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, currentR + 10);
-        haloGrad.addColorStop(0, 'rgba(251, 191, 36, 0.85)');
-        haloGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)');
-        haloGrad.addColorStop(1, 'rgba(217, 119, 6, 0)');
+        if (isRare) {
+          haloGrad.addColorStop(0, 'rgba(56, 189, 248, 0.9)');
+          haloGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.45)');
+          haloGrad.addColorStop(1, 'rgba(3, 105, 161, 0)');
+        } else {
+          haloGrad.addColorStop(0, 'rgba(251, 191, 36, 0.85)');
+          haloGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)');
+          haloGrad.addColorStop(1, 'rgba(217, 119, 6, 0)');
+        }
         ctx.fillStyle = haloGrad;
         ctx.beginPath();
         ctx.arc(0, 0, currentR + 10, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#b45309';
-        ctx.strokeStyle = '#fef08a';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 1, currentR - 1, currentR + 2, 0, 0, Math.PI * 2);
+        // 3. Renderização com Imagem PNG ou Fallback Procedural no Canvas
+        let drewSeedImage = false;
+        if (gameAssets.semente.loaded) {
+          drewSeedImage = drawAssetImage(gameAssets.semente, gameAssets.semente.targetWidth, gameAssets.semente.targetHeight);
+        }
+
+        if (!drewSeedImage) {
+          if (isRare) {
+            // Forma de Gema Celeste Lapidada (Rara - 3 pts)
+            ctx.save();
+            ctx.rotate(Math.sin(globalAnimTimer * 2 + seed.glowTimer) * 0.15);
+            ctx.fillStyle = '#0284c7';
+            ctx.strokeStyle = '#e0f2fe';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(0, -currentR - 3);
+            ctx.lineTo(currentR + 1, 0);
+            ctx.lineTo(0, currentR + 3);
+            ctx.lineTo(-currentR - 1, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Facetas internas da gema
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(0, -currentR - 1);
+            ctx.lineTo(currentR * 0.6, 0);
+            ctx.lineTo(0, currentR * 0.6);
+            ctx.lineTo(-currentR * 0.6, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // Ponto de luz
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-2, -3, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          } else {
+            // Forma de Semente Oval Dourada (Comum - 1 pt)
+            ctx.fillStyle = '#b45309';
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(0, 1, currentR - 1, currentR + 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Broto foliar
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.ellipse(0, -currentR + 1, 3.5, 5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Brilho suave
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-2, -3, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // 4. Rótulo textual de acessibilidade e pontuação (1pt ou 3pt)
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = isRare ? '#38bdf8' : '#fbbf24';
+        ctx.lineWidth = 1;
+        roundRect(ctx, -12, currentR + 2, 24, 12, 3);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#22c55e';
-        ctx.beginPath();
-        ctx.ellipse(0, -currentR + 1, 3.5, 5, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-2, -3, 1.8, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = isRare ? '#7dd3fc' : '#fef08a';
+        ctx.font = 'bold 8px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isRare ? '3pt' : '1pt', 0, currentR + 8);
 
         ctx.restore();
       }
@@ -2522,12 +2984,26 @@
 
   function renderPatrolRoute() {
     ctx.save();
+    // 1. Linha de patrulha da Onça-Pintada
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 8]);
     ctx.beginPath();
     ctx.moveTo(fogGuard.minX, fogGuard.y);
     ctx.lineTo(fogGuard.maxX, fogGuard.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 2. Rota orbital das sementes raras percorrida pelo Segundo Guardião
+    ctx.strokeStyle = 'rgba(192, 132, 252, 0.28)';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    RARE_SEED_WAYPOINTS.forEach((wp, idx) => {
+      if (idx === 0) ctx.moveTo(wp.x, wp.y);
+      else ctx.lineTo(wp.x, wp.y);
+    });
+    ctx.closePath();
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -2634,7 +3110,13 @@
     const pivotScaleY = warnActive ? (1 + 0.08 * warnPulse) : 1;
     ctx.scale(dir * pivotScaleX, pivotScaleY); // Espelha perfeitamente conforme a direção da patrulha
 
-    // 3. Cauda Felina Longa, Grossa e Sinuosa com Anéis e Ponta Preta
+    let drewJaguarImage = false;
+    if (gameAssets.guarda.loaded) {
+      drewJaguarImage = drawAssetImage(gameAssets.guarda, gameAssets.guarda.targetWidth, gameAssets.guarda.targetHeight, false);
+    }
+
+    if (!drewJaguarImage) {
+      // 3. Cauda Felina Longa, Grossa e Sinuosa com Anéis e Ponta Preta
     const tailSway = Math.sin(globalAnimTimer * 4.5) * 4;
     ctx.strokeStyle = '#854d0e';
     ctx.lineWidth = 6.5;
@@ -2821,6 +3303,7 @@
     ctx.ellipse(4, -2, 0.8, 1.7, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    }
 
     ctx.restore(); // Fim do espelhamento horizontal
 
@@ -2895,6 +3378,133 @@
   }
 
   // ==========================================================
+  // SEGUNDO GUARDIÃO: GUARDIÃO CELESTE DAS SEMENTES RARAS (RISCO EXTRA)
+  // Anda em ciclo contínuo de semente rara em semente rara
+  // com a mesma velocidade de Lia (105 px/s).
+  // ==========================================================
+  function renderSecondGuard() {
+    ctx.save();
+    ctx.translate(secondGuard.x, secondGuard.y);
+
+    const pulse = Math.sin(globalAnimTimer * 6) * 3;
+    const flap = Math.sin(globalAnimTimer * 10);
+    const isFacingRight = secondGuard.direction === 1;
+    const dir = isFacingRight ? 1 : -1;
+
+    // 1. Sombra suave no solo
+    ctx.fillStyle = 'rgba(10, 18, 28, 0.38)';
+    ctx.beginPath();
+    ctx.ellipse(0, 14, 20, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Aura Celestial Mística Violeta/Ciano
+    const mistGrad = ctx.createRadialGradient(0, 0, 6, 0, 0, 38 + pulse);
+    mistGrad.addColorStop(0, 'rgba(236, 72, 153, 0.7)');
+    mistGrad.addColorStop(0.45, 'rgba(168, 85, 247, 0.45)');
+    mistGrad.addColorStop(0.8, 'rgba(56, 189, 248, 0.25)');
+    mistGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    ctx.fillStyle = mistGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, 38 + pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.scale(dir, 1);
+
+    // 3. Asas Espectrais do Guardião Celeste
+    ctx.fillStyle = '#7c3aed';
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 1.8;
+    // Asa esquerda / de trás
+    ctx.beginPath();
+    ctx.moveTo(-4, -6);
+    ctx.quadraticCurveTo(-18, -20 + flap * 4, -28, -8 + flap * 6);
+    ctx.quadraticCurveTo(-14, 2, -2, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Asa direita / da frente
+    ctx.fillStyle = '#9333ea';
+    ctx.beginPath();
+    ctx.moveTo(4, -6);
+    ctx.quadraticCurveTo(18, -22 + flap * 5, 28, -8 + flap * 6);
+    ctx.quadraticCurveTo(14, 2, 2, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 4. Corpo Espectral Astral
+    const bodyGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 12);
+    bodyGrad.addColorStop(0, '#f472b6');
+    bodyGrad.addColorStop(0.6, '#a855f7');
+    bodyGrad.addColorStop(1, '#6366f1');
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 11, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Olhos celestes brilhantes
+    ctx.fillStyle = '#38bdf8';
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(3, -4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(3.5, -4.5, 1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bico/Focinho espectral
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.moveTo(8, -3);
+    ctx.lineTo(13, -2);
+    ctx.lineTo(8, 1);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+
+    // 5. Rótulo de Acessibilidade Textual
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 1.2;
+    roundRect(ctx, -38, 20, 76, 14, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#e9d5ff';
+    ctx.font = 'bold 8px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('GUARDIÃO 105px/s', 0, 27);
+
+    // Seta direcional do movimento
+    ctx.save();
+    ctx.rotate(secondGuard.angle || 0);
+    ctx.fillStyle = '#a855f7';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(20, -5);
+    ctx.lineTo(28, 0);
+    ctx.lineTo(20, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // ==========================================================
   // PROTAGONISTA: LIA, O LOBO-GUARÁ (ARTE RICA E DETALHADA)
   // Pelagem dourado-avermelhada, pernas longas pretas articuladas,
   // crina negra eriçada, peitoral branco, orelhas grandes felpudas,
@@ -2913,7 +3523,29 @@
     ctx.ellipse(0, lia.radius + 1 - bobbing, lia.radius * 1.05, 6.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Cauda Volumosa e Felpuda do Lobo-Guará (Base ruiva + Metade final Branca)
+    let drewLiaImage = false;
+    if (gameAssets.lia.loaded) {
+      drewLiaImage = drawAssetImage(gameAssets.lia, gameAssets.lia.targetWidth, gameAssets.lia.targetHeight, lia.facing === 'left');
+      if (drewLiaImage) {
+        // Tag de Acessibilidade Visual "Lia"
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        roundRect(ctx, -20, -43, 40, 15, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Lia 🐺', 0, -32);
+        ctx.restore();
+      }
+    }
+
+    if (!drewLiaImage) {
+      // 2. Cauda Volumosa e Felpuda do Lobo-Guará (Base ruiva + Metade final Branca)
     ctx.save();
     const tailWag = Math.sin(globalAnimTimer * 6.5) * 4.5;
     let tailEndX = tailWag;
@@ -3229,6 +3861,64 @@
     ctx.textAlign = 'center';
     ctx.fillText('Lia 🐺', 0, -32);
     ctx.restore();
+    }
+
+    // 10. Barreira Visual do Escudo Protetor Ativo (ESCUDO)
+    if (shieldActive) {
+      ctx.save();
+      const shieldR = lia.radius + 13 + Math.sin(globalAnimTimer * 8) * 2;
+      const shieldAlpha = 0.55 + Math.sin(globalAnimTimer * 6) * 0.25;
+
+      // Halo protetor brilhante
+      const shieldGrad = ctx.createRadialGradient(0, 0, lia.radius * 0.5, 0, 0, shieldR + 8);
+      shieldGrad.addColorStop(0, 'rgba(56, 189, 248, 0.08)');
+      shieldGrad.addColorStop(0.7, `rgba(56, 189, 248, ${shieldAlpha * 0.4})`);
+      shieldGrad.addColorStop(1, 'rgba(14, 165, 233, 0)');
+      ctx.fillStyle = shieldGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, shieldR + 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Contorno circular de energia do escudo
+      ctx.strokeStyle = `rgba(56, 189, 248, ${shieldAlpha})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, shieldR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Hexágono de barreira protetora
+      ctx.save();
+      ctx.rotate(globalAnimTimer * 1.5);
+      ctx.strokeStyle = 'rgba(224, 242, 254, 0.75)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let h = 0; h < 6; h++) {
+        const ang = (h * Math.PI) / 3;
+        const hx = Math.cos(ang) * (shieldR + 2);
+        const hy = Math.sin(ang) * (shieldR + 2);
+        if (h === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+
+      // Rótulo textual de proteção ativa
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.2;
+      roundRect(ctx, -44, -shieldR - 22, 88, 16, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`🛡️ PROTEÇÃO (${shieldTimeLeft.toFixed(1)}s)`, 0, -shieldR - 14);
+
+      ctx.restore();
+    }
 
     ctx.restore();
   }
@@ -3279,13 +3969,14 @@
           const smX = mapX + 8 + sxNorm * (mapW - 16);
           const smY = mapY + 6 + syNorm * (mapH - 14);
 
-          ctx.fillStyle = '#fbbf24';
+          ctx.fillStyle = s.type === 'rara' ? '#f472b6' : '#fbbf24';
           ctx.beginPath();
-          ctx.arc(smX, smY, 1.8, 0, Math.PI * 2);
+          ctx.arc(smX, smY, s.type === 'rara' ? 2.2 : 1.6, 0, Math.PI * 2);
           ctx.fill();
         }
       });
 
+      // Guarda 1: Onça de Névoa (ponto vermelho)
       const gyNorm = fogGuard.y / WORLD_HEIGHT;
       const gxNorm = (fogGuard.x - 90) / 800;
       const gmX = mapX + 8 + gxNorm * (mapW - 16);
@@ -3293,6 +3984,16 @@
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
       ctx.arc(gmX, gmY, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Guarda 2: Guardião Celeste das Sementes Raras (ponto violeta)
+      const sgyNorm = secondGuard.y / WORLD_HEIGHT;
+      const sgxNorm = (secondGuard.x - 90) / 800;
+      const sgmX = mapX + 8 + sgxNorm * (mapW - 16);
+      const sgmY = mapY + 6 + sgyNorm * (mapH - 14);
+      ctx.fillStyle = '#c084fc';
+      ctx.beginPath();
+      ctx.arc(sgmX, sgmY, 2.3, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -3449,6 +4150,25 @@
       }
     }
 
+    // Tecla Espaço para Ativação do Escudo Protetor (ESCUDO)
+    // Segurar a tecla não gasta vários escudos; bloqueia se ativo ou reserva zerada. Preserve teclado em campos e botões.
+    if (e.code === 'Space' || e.key === ' ') {
+      const isInteractive = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON' || e.target.tagName === 'A');
+      if (!isInteractive) {
+        if (isPressed) {
+          if (!e.repeat && !spaceKeyHeld) {
+            spaceKeyHeld = true;
+            if (currentState === State.PLAYING) {
+              activateShield();
+            }
+          }
+          handled = true;
+        } else {
+          spaceKeyHeld = false;
+        }
+      }
+    }
+
     switch (e.code) {
       case 'KeyW':
       case 'ArrowUp':
@@ -3518,6 +4238,21 @@
     togglePause();
   });
   btnReset.addEventListener('click', resetGame);
+  if (btnShield) btnShield.addEventListener('click', () => {
+    ensureAudio();
+    activateShield();
+  });
+  if (btnTouchShield) {
+    btnTouchShield.addEventListener('click', () => {
+      ensureAudio();
+      activateShield();
+    });
+    btnTouchShield.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      ensureAudio();
+      activateShield();
+    }, { passive: false });
+  }
   if (btnMute) btnMute.addEventListener('click', () => {
     ensureAudio();
     toggleMute();
@@ -3581,6 +4316,7 @@
   initSeeds();
   updateHUD();
   updateMuteButtonUI();
+  loadGameAssets();
   requestAnimationFrame(gameLoop);
 
   // Interface para Testes Automatizados e Verificação
@@ -3588,11 +4324,17 @@
     getState: () => currentState,
     getLia: () => ({ ...lia }),
     getGuard: () => ({ ...fogGuard }),
+    getSecondGuard: () => ({ ...secondGuard }),
     getSeeds: () => seeds.map(s => ({ ...s })),
     getCanteiros: () => CANTEIROS.map(c => ({ ...c })),
     getReserve: () => seedsInReserve,
     getPlantedCount: () => plantedCount,
     getPlantProgress: () => plantProgress,
+    getScore: () => currentScore,
+    getShieldsAvailable: () => shieldsAvailable,
+    isShieldActive: () => shieldActive,
+    getShieldTimeLeft: () => shieldTimeLeft,
+    activateShield,
     isMuted: () => isMuted,
     toggleMute,
     ensureAudio,
@@ -3600,19 +4342,55 @@
     playSoundCollect,
     playSoundDefeat,
     playSoundConclusion,
+    playGuardDisgustSound,
     collectSeed: (id) => {
       const s = seeds.find(item => item.id === id);
       if (s && !s.collected) {
         s.collected = true;
+        currentScore += (s.points || (s.type === 'rara' ? 3 : 1));
         spawnSparkle(s.x, s.y);
         playSoundCollect();
         updateGuardSpeedAndNotice();
         updateHUD();
-        if (getCollectedCount() === seeds.length) triggerVictory();
+        if (getCollectedCount() >= 10) triggerVictory();
       }
     },
+    collectTenCommon: () => {
+      const commons = seeds.filter(s => s.type === 'comum' && !s.collected).slice(0, 10);
+      commons.forEach(s => {
+        s.collected = true;
+        currentScore += s.points;
+      });
+      updateGuardSpeedAndNotice();
+      updateHUD();
+      if (getCollectedCount() >= 10) triggerVictory();
+    },
+    collectTenRare: () => {
+      const rares = seeds.filter(s => s.type === 'rara' && !s.collected).slice(0, 10);
+      rares.forEach(s => {
+        s.collected = true;
+        currentScore += s.points;
+      });
+      updateGuardSpeedAndNotice();
+      updateHUD();
+      if (getCollectedCount() >= 10) triggerVictory();
+    },
+    collectMixSeeds: (commonCount, rareCount) => {
+      const commons = seeds.filter(s => s.type === 'comum' && !s.collected).slice(0, commonCount);
+      const rares = seeds.filter(s => s.type === 'rara' && !s.collected).slice(0, rareCount);
+      commons.concat(rares).forEach(s => {
+        s.collected = true;
+        currentScore += s.points;
+      });
+      updateGuardSpeedAndNotice();
+      updateHUD();
+      if (getCollectedCount() >= 10) triggerVictory();
+    },
     collectAllSeeds: () => {
-      seeds.forEach(s => s.collected = true);
+      seeds.slice(0, 10).forEach(s => {
+        s.collected = true;
+        currentScore += (s.points || 1);
+      });
       updateHUD();
       triggerVictory();
     },
@@ -3622,7 +4400,20 @@
     setLiaPos: (x, y) => { lia.x = x; lia.y = y; },
     resetGame,
     togglePause,
-    isWalkable
+    isWalkable,
+    getAssetsStatus: () => ({
+      lia: { ...gameAssets.lia },
+      guarda: { ...gameAssets.guarda },
+      semente: { ...gameAssets.semente }
+    }),
+    loadGameAssets,
+    setMockAsset: (key, img, loaded = true) => {
+      if (gameAssets[key]) {
+        gameAssets[key].img = img;
+        gameAssets[key].loaded = loaded;
+        gameAssets[key].failed = !loaded;
+      }
+    }
   };
 
 })();

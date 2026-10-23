@@ -127,6 +127,50 @@ html, body {
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.6);
 }
 
+.points-badge {
+  border-color: rgba(236, 72, 153, 0.45);
+  background: rgba(15, 23, 42, 0.88);
+}
+
+.points-badge .seed-count {
+  color: #f472b6;
+}
+
+.shield-badge {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(15, 23, 42, 0.88);
+  transition: all 0.25s ease;
+}
+
+.shield-badge.active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.8);
+  background: rgba(8, 47, 73, 0.95);
+  transform: scale(1.05);
+}
+
+.shield-badge .seed-count {
+  color: #38bdf8;
+}
+
+.shield-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: #38bdf8;
+  color: #f0f9ff;
+}
+
+.shield-btn:disabled, .shield-touch-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.shield-touch-btn {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.9) 0%, rgba(3, 105, 161, 0.9) 100%);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
 /* Status Textual */
 .hud-status-badge {
   display: flex;
@@ -139,8 +183,8 @@ html, body {
   border: 1px solid var(--panel-border);
   border-radius: 999px;
   font-size: 0.85rem;
-  font-weight: 500;
-  color: #f1f5f9;
+  font-weight: 700;
+  color: #ffffff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
