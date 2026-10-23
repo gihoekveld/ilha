@@ -2387,96 +2387,147 @@
   // CENOGRAFIA DO CERRADO (SUL) E DA MATA NATIVA (NORTE)
   // ==========================================================
   function renderPalmTree(scale) {
-    // Árvore Típica do Cerrado: Ipê-Amarelo / Pequizeiro de tronco tortuoso e casca grossa
+    // Palmeira & Coqueiro Tropical com Folhas em Leque e Cachos de Cocos
     ctx.scale(scale, scale);
 
-    // Pétalas douradas caídas ao redor da raiz quando revitalizado
+    // Folíolos caídos ao redor da raiz quando revitalizado
     if (plantProgress > 0.35) {
-      ctx.fillStyle = `rgba(250, 204, 21, ${0.45 * plantProgress})`;
+      ctx.fillStyle = `rgba(34, 197, 94, ${0.4 * plantProgress})`;
       const fallen = [
-        { x: -12, y: 8, r: 2 }, { x: -5, y: 11, r: 1.8 },
-        { x: 7, y: 9, r: 2.2 }, { x: 14, y: 6, r: 1.6 },
-        { x: 2, y: 12, r: 1.5 }
+        { x: -11, y: 8, rx: 3.2, ry: 1.4 },
+        { x: 8, y: 10, rx: 3.0, ry: 1.3 },
+        { x: -3, y: 11, rx: 2.6, ry: 1.2 }
       ];
       fallen.forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.ellipse(p.x, p.y, p.rx, p.ry, 0.4, 0, Math.PI * 2);
         ctx.fill();
       });
     }
 
-    // Tronco tortuoso e cortiçoso característico do Cerrado
-    ctx.strokeStyle = lerpColor('#2e1c10', '#5c3419', plantProgress);
-    ctx.lineWidth = 7.5;
+    // Tronco esguio e curvado característico de Palmeira e Coqueiro
+    ctx.strokeStyle = lerpColor('#2e1c10', '#78350f', plantProgress);
+    ctx.lineWidth = 6.5;
     ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(0, 9);
-    ctx.bezierCurveTo(-9, -4, 7, -16, -3, -28);
+    ctx.quadraticCurveTo(-10, -12, -4, -34);
     ctx.stroke();
 
-    // Casca sulcada (textura suberosa)
-    ctx.strokeStyle = lerpColor('#472c1b', '#854d0e', plantProgress);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-1, 5);
-    ctx.quadraticCurveTo(-6, -6, 1, -15);
-    ctx.stroke();
+    // Anéis e gomos de textura da casca da palmeira / coqueiro
+    ctx.strokeStyle = lerpColor('#472c1b', '#92400e', plantProgress);
+    ctx.lineWidth = 1.6;
+    for (let r = 0; r <= 8; r++) {
+      const t = r / 8;
+      const rx = (1 - t) * (1 - t) * 0 + 2 * (1 - t) * t * -10 + t * t * -4;
+      const ry = (1 - t) * (1 - t) * 9 + 2 * (1 - t) * t * -12 + t * t * -34;
+      ctx.beginPath();
+      ctx.moveTo(rx - 3.5, ry);
+      ctx.lineTo(rx + 3.5, ry);
+      ctx.stroke();
+    }
 
-    // Galhos retorcidos do Cerrado
-    ctx.strokeStyle = lerpColor('#29180e', '#4a2912', plantProgress);
-    ctx.lineWidth = 3.2;
-    ctx.beginPath();
-    // Galho esquerdo
-    ctx.moveTo(-1, -18);
-    ctx.quadraticCurveTo(-14, -22, -18, -32);
-    // Galho direito
-    ctx.moveTo(1, -20);
-    ctx.quadraticCurveTo(14, -24, 17, -33);
-    // Galho central
-    ctx.moveTo(-3, -26);
-    ctx.quadraticCurveTo(-6, -35, 2, -41);
-    ctx.stroke();
-
-    // Florada exuberante de Ipê-Amarelo e folhas do Cerrado
+    // Copa da Palmeira / Coqueiro com Frondes Exuberantes e Cocos
     if (plantProgress > 0.04) {
       const growth = plantProgress;
-      const sway = Math.sin(globalAnimTimer * 1.6) * 1.5;
+      const sway = Math.sin(globalAnimTimer * 1.8) * 1.8;
       ctx.save();
-      ctx.translate(sway, 0);
+      ctx.translate(-4 + sway * 0.4, -34);
 
-      // Folhagem verde-oliva de base
-      ctx.fillStyle = '#4d7c0f';
-      ctx.beginPath();
-      ctx.arc(-14, -31, 10 * growth, 0, Math.PI * 2);
-      ctx.arc(13, -32, 10 * growth, 0, Math.PI * 2);
-      ctx.arc(0, -37, 12 * growth, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cachos dourados vibrantes do Ipê-Amarelo
-      const ipeClusters = [
-        { x: -17, y: -33, r: 12 * growth, c: '#eab308' },
-        { x: 15, y: -34, r: 12 * growth, c: '#eab308' },
-        { x: -6, y: -39, r: 14 * growth, c: '#facc15' },
-        { x: 7, y: -38, r: 13 * growth, c: '#facc15' },
-        { x: 0, y: -43, r: 11 * growth, c: '#fef08a' }
+      // Frondes / Folhas de Palmeira e Coqueiro arqueadas em leque tropical
+      const fronds = [
+        { angle: -2.3, length: 28 * growth, curve: -12 },
+        { angle: -1.7, length: 32 * growth, curve: -6 },
+        { angle: -1.0, length: 30 * growth, curve: 8 },
+        { angle: -0.4, length: 26 * growth, curve: 14 },
+        { angle: -2.8, length: 24 * growth, curve: -16 },
+        { angle: 0.2, length: 22 * growth, curve: 16 }
       ];
-      ipeClusters.forEach(cl => {
-        ctx.fillStyle = cl.c;
+
+      fronds.forEach(fr => {
+        ctx.save();
+        ctx.rotate(fr.angle);
+
+        // Haste central da folha de palmeira
+        ctx.strokeStyle = '#15803d';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(cl.x, cl.y, cl.r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(fr.length * 0.5, fr.curve * 0.4, fr.length, fr.curve);
+        ctx.stroke();
+
+        // Folíolos da palmeira (frondes com peninhas verdes)
+        const numLeaflets = 7;
+        for (let i = 1; i <= numLeaflets; i++) {
+          const lt = i / numLeaflets;
+          const lx = lt * fr.length;
+          const ly = (lt * lt) * fr.curve;
+          ctx.fillStyle = i % 2 === 0 ? '#16a34a' : '#22c55e';
+          ctx.beginPath();
+          ctx.ellipse(lx, ly - 3.5 * growth, 3.2 * growth, 1.2 * growth, 0.4, 0, Math.PI * 2);
+          ctx.ellipse(lx, ly + 3.5 * growth, 3.2 * growth, 1.2 * growth, -0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
       });
 
-      // Pequenas flores individuais iluminadas
+      // --- CACHOS DE COCOS DO COQUEIRO / PALMEIRA ---
       if (plantProgress >= 0.5) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-12, -36, 1.8 * growth, 0, Math.PI * 2);
-        ctx.arc(10, -37, 1.8 * growth, 0, Math.PI * 2);
-        ctx.arc(0, -45, 2 * growth, 0, Math.PI * 2);
-        ctx.fill();
+        const coconutPos = [
+          { x: -3, y: 1, r: 3.5 },
+          { x: 3, y: 2, r: 3.4 },
+          { x: 0, y: 4, r: 3.2 },
+          { x: -5, y: 4, r: 2.8 }
+        ];
+
+        coconutPos.forEach((c, idx) => {
+          ctx.save();
+          ctx.translate(c.x, c.y);
+
+          // Sombra do coco
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.beginPath();
+          ctx.ellipse(0.5, c.r + 0.8, c.r * 0.8, c.r * 0.4, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Casca do coco (tom verde-oliva ou castanho fibroso de coco maduro)
+          const isGreenCoconut = idx % 2 === 0;
+          ctx.fillStyle = isGreenCoconut ? '#4d7c0f' : '#78350f';
+          ctx.strokeStyle = isGreenCoconut ? '#365314' : '#451a03';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, c.r, c.r * 1.15, idx * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Fibra e textura do coco
+          ctx.fillStyle = isGreenCoconut ? '#65a30d' : '#92400e';
+          ctx.beginPath();
+          ctx.arc(-c.r * 0.3, -c.r * 0.2, c.r * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Brilho superior
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.beginPath();
+          ctx.ellipse(-c.r * 0.3, -c.r * 0.4, 1.2, 0.7, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 3 pontinhos característicos do coco ("olhos" do coco)
+          if (!isGreenCoconut) {
+            ctx.fillStyle = '#26140b';
+            ctx.beginPath();
+            ctx.arc(-1, c.r * 0.4, 0.6, 0, Math.PI * 2);
+            ctx.arc(1, c.r * 0.4, 0.6, 0, Math.PI * 2);
+            ctx.arc(0, c.r * 0.7, 0.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        });
       }
+
       ctx.restore();
     }
   }
@@ -2560,20 +2611,59 @@
         ctx.fill();
       });
 
-      // Orquídeas epífitas e frutos silvestres na copa da Mata
+      // Orquídeas epífitas e MAÇÃS na copa da Mata (substituem símbolos geométricos)
       if (plantProgress >= 0.65) {
         // Orquídea roxa/rosa no tronco
         ctx.fillStyle = '#e879f9';
         ctx.beginPath();
         ctx.arc(-4, -8, 2.5, 0, Math.PI * 2);
         ctx.fill();
-        // Frutos tropicais vermelhos/dourados na copa
-        ctx.fillStyle = '#f43f5e';
-        ctx.beginPath();
-        ctx.arc(-9, -27, 2.6, 0, Math.PI * 2);
-        ctx.arc(10, -23, 2.6, 0, Math.PI * 2);
-        ctx.arc(3, -37, 2.6, 0, Math.PI * 2);
-        ctx.fill();
+
+        // --- MAÇÃS desenhadas na copa ---
+        const applePositions = [
+          { x: -9, y: -27 }, { x: 10, y: -23 }, { x: 3, y: -37 },
+          { x: -3, y: -30 + Math.sin(globalAnimTimer * 1.2) * 0.5 }
+        ];
+        applePositions.forEach((ap, idx) => {
+          ctx.save();
+          ctx.translate(ap.x + sway * 0.3, ap.y);
+
+          // Sombra da maçã
+          ctx.fillStyle = 'rgba(0,0,0,0.2)';
+          ctx.beginPath();
+          ctx.ellipse(0.5, 3.2, 2.2, 1, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Corpo da maçã (vermelho vivo)
+          const appleR = 2.6 + (idx % 2) * 0.3;
+          ctx.fillStyle = idx % 3 === 0 ? '#ef4444' : '#dc2626';
+          ctx.beginPath();
+          ctx.arc(0, 0, appleR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Brilho da maçã (reflexo branco no topo-esquerdo)
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.beginPath();
+          ctx.ellipse(-0.8, -1.1, 1.1, 0.7, -0.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Cabinho verde
+          ctx.strokeStyle = '#15803d';
+          ctx.lineWidth = 0.9;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0.2, -appleR + 0.2);
+          ctx.quadraticCurveTo(1.5, -appleR - 2.5, 0.8, -appleR - 3.5);
+          ctx.stroke();
+
+          // Folhinha do cabo
+          ctx.fillStyle = '#22c55e';
+          ctx.beginPath();
+          ctx.ellipse(1.5, -appleR - 2, 1.8, 1, 0.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        });
       }
     }
   }
@@ -2628,6 +2718,60 @@
         ctx.ellipse(cr.x, cr.y, cr.rx, cr.ry, 0, 0, Math.PI * 2);
         ctx.fill();
       });
+
+      // --- LARANJAS penduradas nos galhos (palmeira Jussara) ---
+      if (plantProgress >= 0.65) {
+        const orangePos = [
+          { x: -17, y: -26 }, { x: 17, y: -26 },
+          { x: -11, y: -34 }, { x: 11, y: -34 },
+          { x: 0, y: -38 }
+        ];
+        orangePos.forEach((op, idx) => {
+          ctx.save();
+          ctx.translate(op.x, op.y);
+
+          // Sombra
+          ctx.fillStyle = 'rgba(0,0,0,0.18)';
+          ctx.beginPath();
+          ctx.ellipse(0.5, 3, 2, 0.9, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Corpo laranja com textura (duas tonalidades)
+          const r = 2.5 + (idx % 2) * 0.2;
+          ctx.fillStyle = idx % 2 === 0 ? '#f97316' : '#ea580c';
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Textura de casca (pequenos pontos)
+          ctx.fillStyle = 'rgba(251,146,60,0.6)';
+          ctx.beginPath();
+          ctx.arc(-0.6, -0.4, r * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Brilho
+          ctx.fillStyle = 'rgba(255,255,255,0.45)';
+          ctx.beginPath();
+          ctx.ellipse(-0.7, -1, 0.9, 0.6, -0.4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Cabo e folha
+          ctx.strokeStyle = '#15803d';
+          ctx.lineWidth = 0.8;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, -r);
+          ctx.lineTo(0.3, -r - 2.8);
+          ctx.stroke();
+
+          ctx.fillStyle = '#22c55e';
+          ctx.beginPath();
+          ctx.ellipse(1.2, -r - 1.8, 1.5, 0.8, 0.6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        });
+      }
     }
   }
 
@@ -2764,20 +2908,37 @@
       ctx.ellipse(Math.cos(ang) * 6 * growth, Math.sin(ang) * 4 * growth, 6 * growth, 2.5 * growth, ang, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Flores tropicais vibrantes
+    // Flores tropicais com pétalas detalhadas
     const colors = ['#f43f5e', '#f97316', '#a855f7', '#facc15', '#ec4899'];
     for (let i = 0; i < 5; i++) {
       const fx = (i - 2) * 5.5;
       const fy = Math.sin(i * 1.6) * 4;
-      ctx.fillStyle = colors[i % colors.length];
+      const fCol = colors[i % colors.length];
+
+      ctx.save();
+      ctx.translate(fx, fy - 2);
+
+      // Pétalas da flor tropical
+      const petalR = 2.4 * growth;
+      ctx.fillStyle = fCol;
+      for (let p = 0; p < 5; p++) {
+        const pa = (p / 5) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(pa) * petalR * 0.75, Math.sin(pa) * petalR * 0.75, petalR * 0.7, petalR * 0.5, pa, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Miolo da flor
+      ctx.fillStyle = '#fef08a';
       ctx.beginPath();
-      ctx.arc(fx, fy - 2, 3.2 * growth, 0, Math.PI * 2);
+      ctx.arc(0, 0, 1.2 * growth, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.restore();
     }
   }
 
   function renderShrub(scale) {
-    // Samambaia Imperial & Arbusto da Mata
+    // Samambaia Imperial & Arbusto de Frutas Silvestres da Mata
     ctx.scale(scale, scale);
     if (plantProgress <= 0.05) {
       ctx.strokeStyle = '#2d241e';
@@ -2804,6 +2965,27 @@
     ctx.arc(4 * g, -2 * g, 5 * g, 0, Math.PI * 2);
     ctx.arc(0, -7 * g, 5.5 * g, 0, Math.PI * 2);
     ctx.fill();
+
+    // Frutas silvestres / bagas da mata (amoras e mirtilos silvestres)
+    if (plantProgress >= 0.5) {
+      const berries = [
+        { x: -5 * g, y: -4 * g, r: 1.8 * g, c: '#7c3aed' },
+        { x: -3 * g, y: -2 * g, r: 1.6 * g, c: '#4c1d95' },
+        { x: 3 * g, y: -3 * g, r: 1.9 * g, c: '#6d28d9' },
+        { x: 5 * g, y: -5 * g, r: 1.7 * g, c: '#5b21b6' },
+        { x: 0, y: -8 * g, r: 1.8 * g, c: '#7c3aed' }
+      ];
+      berries.forEach(b => {
+        ctx.fillStyle = b.c;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.beginPath();
+        ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
   }
 
   function renderButterflies() {
