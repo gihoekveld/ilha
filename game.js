@@ -394,25 +394,31 @@
   let seeds = [];
   let sparkles = [];
 
-  // Canteiros de Plantio
+  // Canteiros de Plantio (20 canteiros para comportar todas as 20 sementes resgatáveis)
   const CANTEIRO_DEFINITIONS = [
-    // Praia (6 canteiros)
+    // Praia / Cerrado (10 canteiros)
     { id: 'c_b1', region: 'beach', x: 220, y: 1150 },
     { id: 'c_b2', region: 'beach', x: 380, y: 1180 },
     { id: 'c_b3', region: 'beach', x: 580, y: 1170 },
     { id: 'c_b4', region: 'beach', x: 740, y: 1140 },
     { id: 'c_b5', region: 'beach', x: 280, y: 940 },
     { id: 'c_b6', region: 'beach', x: 680, y: 950 },
+    { id: 'c_b7', region: 'beach', x: 480, y: 1040 },
+    { id: 'c_b8', region: 'beach', x: 360, y: 1060 },
+    { id: 'c_b9', region: 'beach', x: 600, y: 1060 },
+    { id: 'c_b10', region: 'beach', x: 480, y: 1200 },
 
-    // Bosque (8 canteiros)
+    // Bosque / Mata (10 canteiros)
     { id: 'c_f1', region: 'forest', x: 210, y: 460 },
     { id: 'c_f2', region: 'forest', x: 360, y: 460 },
     { id: 'c_f3', region: 'forest', x: 600, y: 460 },
     { id: 'c_f4', region: 'forest', x: 750, y: 450 },
     { id: 'c_f5', region: 'forest', x: 480, y: 360 },
     { id: 'c_f6', region: 'forest', x: 230, y: 220 },
-    { id: 'c_f7', region: 'forest', x: 480, y: 170 },
-    { id: 'c_f8', region: 'forest', x: 730, y: 220 }
+    { id: 'c_f7', region: 'forest', x: 480, y: 220 },
+    { id: 'c_f8', region: 'forest', x: 730, y: 220 },
+    { id: 'c_f9', region: 'forest', x: 280, y: 260 },
+    { id: 'c_f10', region: 'forest', x: 680, y: 260 }
   ];
 
   let CANTEIROS = [];
@@ -429,7 +435,7 @@
   let plantedCount = 0;
   let plantProgress = 0;
 
-  // Borboletas e Pássaros
+  // Borboletas e Pássaros da Ilha Revitalizada
   const BUTTERFLIES = [
     { x: 320, y: 350, vx: 28, vy: 14, phase: 0, color: '#f59e0b', scale: 0.9 },
     { x: 520, y: 280, vx: -24, vy: 16, phase: 1.5, color: '#38bdf8', scale: 1.0 },
@@ -451,11 +457,17 @@
     { x: 350, y: 920, speed: 78, phase: 2.1, size: 9, color: '#0369a1' }
   ];
 
+  // Velocidade de Lia: base 105 px/s; +30% após 5 coletas (136.5 px/s)
+  const LIA_BASE_SPEED = 105;
+  const LIA_SPEED_BOOST = 1.3;
+  let liaBoostNotified = false;
+  let tenSeedsNotified = false;
+
   const lia = {
     x: LIA_START_X,
     y: LIA_START_Y,
     radius: 17,
-    speed: 105,
+    speed: LIA_BASE_SPEED,
     facing: 'up',
     isMoving: false,
     walkCycle: 0
@@ -970,6 +982,28 @@
       : 0;
   }
 
+  function areEnemiesActive() {
+    return currentState === State.PLAYING && getCollectedCount() < 10;
+  }
+
+  function updateLiaSpeedAndNotice() {
+    const count = getCollectedCount();
+    if (count >= 5) {
+      lia.speed = Math.round(LIA_BASE_SPEED * LIA_SPEED_BOOST * 100) / 100; // 136.5 px/s (+30%)
+      if (!liaBoostNotified) {
+        liaBoostNotified = true;
+        showPlaceDiscovery({
+          icon: '⚡',
+          fullName: 'Lia mais rápida!',
+          description: 'Lia ganhou +30% de velocidade (136.5 px/s) após resgatar 5 sementes!'
+        });
+      }
+    } else {
+      lia.speed = LIA_BASE_SPEED; // 105 px/s
+      liaBoostNotified = false;
+    }
+  }
+
   function updateGuardSpeedAndNotice() {
     const count = getCollectedCount();
     if (count >= 5 && count <= 9) {
@@ -1057,13 +1091,13 @@
       if (seedBadgeIcon) seedBadgeIcon.textContent = '🌿';
       if (seedBadgeLabel) seedBadgeLabel.textContent = 'Reserva:';
       seedsCollectedEl.textContent = seedsInReserve;
-      seedsTotalEl.textContent = '10';
+      seedsTotalEl.textContent = getCollectedCount();
 
       if (currentState === State.CONCLUDED) {
         statusMessage.textContent = 'Sua ilha está voltando à vida! Toda a vegetação renasceu.';
         statusDot.className = 'status-dot';
       } else {
-        statusMessage.textContent = `Sua ilha está voltando à vida! Plantados ${plantedCount} de 10 (Aperte E no canteiro)`;
+        statusMessage.textContent = `Plantando: ${plantedCount} de ${getCollectedCount()} sementes (${seedsInReserve} na reserva — Aperte E no canteiro)`;
         statusDot.className = 'status-dot';
       }
 
@@ -1071,14 +1105,15 @@
       btnPause.textContent = 'Pausar (P)';
       btnStart.disabled = true;
       if (btnPlant) btnPlant.classList.add('hidden');
+      if (btnActionPlant) btnActionPlant.classList.remove('hidden');
       return;
     }
 
-    // Fase de Resgate
+    // Fase de Resgate / Exploração
     if (seedBadgeIcon) seedBadgeIcon.textContent = '🌱';
     if (seedBadgeLabel) seedBadgeLabel.textContent = 'Sementes:';
     seedsCollectedEl.textContent = count;
-    seedsTotalEl.textContent = '10';
+    seedsTotalEl.textContent = '20';
 
     if (currentState === State.DEFEATED) {
       statusMessage.textContent = 'A névoa alcançou você. Reinicie para tentar de novo.';
@@ -1087,15 +1122,14 @@
       btnStart.disabled = true;
       if (btnPlant) btnPlant.classList.add('hidden');
     } else if (currentState === State.VICTORY) {
-      if (currentScore >= 20) {
-        statusMessage.textContent = `Guardião da ilha (${currentScore} pts)! Clique em Plantar!`;
-      } else {
-        statusMessage.textContent = `Recuperação básica (${currentScore} pts)! Clique em Plantar!`;
-      }
+      const victoryTitle = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+      modalTitle.textContent = victoryTitle;
+      statusMessage.textContent = `${victoryTitle} (${currentScore} pts)! Inimigos sumiram — Coletadas ${count}/20. Clique em Plantar ou continue coletando!`;
       statusDot.className = 'status-dot gold';
-      btnPause.disabled = true;
+      btnPause.disabled = false;
       btnStart.disabled = true;
       if (btnPlant) btnPlant.classList.remove('hidden');
+      if (btnActionPlant) btnActionPlant.classList.remove('hidden');
     } else if (currentState === State.PAUSED) {
       statusMessage.textContent = 'Jogo Pausado';
       btnPause.disabled = false;
@@ -1108,16 +1142,25 @@
       btnStart.disabled = false;
       if (btnPlant) btnPlant.classList.add('hidden');
     } else if (currentState === State.PLAYING) {
-      if (count >= 5 && count < 10) {
-        statusMessage.textContent = `Guarda mais rápido — Coletadas ${count} de 10 sementes (${currentScore} pts)`;
+      if (count >= 10) {
+        const victoryTitle = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+        modalTitle.textContent = victoryTitle;
+        statusMessage.textContent = `${victoryTitle} (${currentScore} pts)! Inimigos sumiram — Coletadas ${count}/20. Plante (E) ou continue coletando!`;
+        statusDot.className = 'status-dot gold';
+        if (btnPlant) btnPlant.classList.remove('hidden');
+        if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+      } else if (count >= 5) {
+        statusMessage.textContent = `Lia +30% veloz e Guarda mais rápido — Coletadas ${count} de 20 sementes (${currentScore} pts)`;
+        statusDot.className = 'status-dot';
+        if (btnPlant) btnPlant.classList.add('hidden');
       } else {
-        statusMessage.textContent = `Missão: Coletadas ${count} de 10 sementes (${currentScore} pts)`;
+        statusMessage.textContent = `Missão: Coletadas ${count} de 20 sementes (${currentScore} pts)`;
+        statusDot.className = 'status-dot';
+        if (btnPlant) btnPlant.classList.add('hidden');
       }
-      statusDot.className = 'status-dot';
       btnPause.disabled = false;
       btnPause.textContent = 'Pausar (P)';
       btnStart.disabled = true;
-      if (btnPlant) btnPlant.classList.add('hidden');
     }
   }
 
@@ -1175,13 +1218,12 @@
     if (currentState !== State.VICTORY && currentState !== State.PLAYING) return;
     
     currentState = State.PLANTING;
-    seedsInReserve = 10;
-    plantedCount = 0;
-    plantProgress = 0;
+    if (seedsInReserve <= 0 && plantedCount === 0) {
+      seedsInReserve = getCollectedCount();
+    }
+    plantProgress = Math.min(1.0, plantedCount / Math.max(10, getCollectedCount()));
     shieldActive = false;
     shieldTimeLeft = 0;
-
-    initCanteiros();
 
     modalOverlay.classList.add('hidden');
     if (modalPlantBtn) modalPlantBtn.classList.add('hidden');
@@ -1191,7 +1233,7 @@
     showPlaceDiscovery({
       icon: '🌿',
       fullName: 'Etapa de Plantio Iniciada',
-      description: 'A névoa se dissipou! Distribua as 10 sementes da reserva pelos canteiros (tecla E).'
+      description: `Distribua as ${seedsInReserve} sementes coletadas pelos canteiros (tecla E).`
     });
 
     lastTimestamp = performance.now();
@@ -1200,8 +1242,17 @@
   }
 
   function tryPlantAtCanteiro(target) {
-    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED) return false;
+    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED && !(currentState === State.PLAYING && getCollectedCount() >= 10)) {
+      return false;
+    }
     if (!target) return false;
+
+    // Se estava em PLAYING com >= 10 coletas, ativa o modo de plantio
+    if (currentState === State.PLAYING && getCollectedCount() >= 10) {
+      currentState = State.PLANTING;
+      if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+      if (btnPlant) btnPlant.classList.add('hidden');
+    }
 
     if (target.planted) {
       showPlaceDiscovery({
@@ -1215,8 +1266,10 @@
     if (seedsInReserve <= 0) {
       showPlaceDiscovery({
         icon: '⚠️',
-        fullName: 'Reserva Esgotada',
-        description: 'Todas as dez sementes já foram distribuídas pela ilha!'
+        fullName: 'Sem sementes na reserva',
+        description: getCollectedCount() < seeds.length 
+          ? 'Colete mais sementes pela ilha para continuar plantando!'
+          : 'Todas as sementes resgatadas já foram plantadas!'
       });
       return false;
     }
@@ -1226,7 +1279,7 @@
     target.planted = true;
     target.growthAnim = 0;
     plantedCount += 1;
-    plantProgress = Math.min(1.0, plantedCount / 10);
+    plantProgress = Math.min(1.0, plantedCount / Math.max(10, getCollectedCount()));
 
     spawnPlantSparkles(target.x, target.y);
     seedBadge.classList.add('pulse');
@@ -1234,14 +1287,16 @@
 
     updateHUD();
 
-    if (plantedCount === 10) {
+    if (plantedCount >= 10 && seedsInReserve <= 0) {
       triggerIslandRestored();
     }
     return true;
   }
 
   function tryPlantAtNearbyCanteiro() {
-    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED) return false;
+    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED && !(currentState === State.PLAYING && getCollectedCount() >= 10)) {
+      return false;
+    }
 
     let closest = null;
     let closestDist = Infinity;
@@ -1271,8 +1326,11 @@
     // Toca som de conclusão dos 10 plantios uma vez
     playSoundConclusion();
 
-    modalTitle.textContent = 'Sua ilha está voltando à vida';
-    modalDescription.textContent = 'Você plantou todas as dez sementes! As árvores recuperaram suas copas verdejantes, as flores desabrocharam e o bosque agora transborda vida com pássaros voando e borboletas. A harmonia da Ilha Viva foi restaurada por Lia!';
+    const victoryTitle = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+    modalTitle.textContent = victoryTitle;
+    modalDescription.textContent = currentScore >= 20
+      ? `Sua ilha está voltando à vida! Como Guardiã da Ilha (${currentScore} pontos), Lia plantou todas as ${plantedCount} sementes coletadas. As árvores recuperaram suas copas com frutos e flores e o bosque transborda vida!`
+      : `Sua ilha está voltando à vida! Lia plantou todas as ${plantedCount} sementes coletadas (${currentScore} pontos). A vegetação renasceu e a recuperação da ilha foi completada!`;
     
     if (modalPlantBtn) modalPlantBtn.classList.add('hidden');
     if (modalPrimaryBtn) {
@@ -1364,9 +1422,12 @@
   function resetGame() {
     lia.x = LIA_START_X;
     lia.y = LIA_START_Y;
+    lia.speed = LIA_BASE_SPEED; // 105 px/s
     lia.facing = 'up';
     lia.isMoving = false;
     lia.walkCycle = 0;
+    liaBoostNotified = false;
+    tenSeedsNotified = false;
 
     fogGuard.x = GUARD_START.x;
     fogGuard.y = GUARD_START.y;
@@ -1537,7 +1598,7 @@
       lia.walkCycle = 0;
     }
 
-    // 2. Movimento da Onça-Pintada Espectral (Guarda) - apenas no resgate
+    // 2. Movimento dos Guardas (apenas no resgate antes de 10 coletas; após 10, os inimigos desaparecem!)
     if (currentState === State.PLAYING) {
       if (shieldActive) {
         shieldTimeLeft = Math.max(0, shieldTimeLeft - dt);
@@ -1546,7 +1607,9 @@
           updateHUD();
         }
       }
+    }
 
+    if (areEnemiesActive()) {
       fogGuard.x += fogGuard.direction * fogGuard.speed * dt;
       if (fogGuard.x >= fogGuard.maxX) {
         fogGuard.x = fogGuard.maxX;
@@ -1640,8 +1703,8 @@
       }
     }
 
-    // 3. Coleta de Sementes na Fase de Resgate (qualquer 10 encerra o resgate)
-    if (currentState === State.PLAYING) {
+    // 3. Coleta de Sementes (Lia pode continuar coletando sementes mesmo após 10 coletas e durante o plantio!)
+    if (currentState === State.PLAYING || currentState === State.PLANTING) {
       let newlyCollected = false;
       for (const seed of seeds) {
         if (!seed.collected) {
@@ -1652,6 +1715,7 @@
           if ((dx * dx + dy * dy) <= (hitDistance * hitDistance)) {
             seed.collected = true;
             currentScore += (seed.points || (seed.type === 'rara' ? 3 : 1));
+            seedsInReserve += 1;
             newlyCollected = true;
             spawnSparkle(seed.x, seed.y);
             playSoundCollect(); // Toca som curto de coleta
@@ -1666,12 +1730,19 @@
       }
 
       if (newlyCollected) {
+        updateLiaSpeedAndNotice();
         updateGuardSpeedAndNotice();
         updateHUD();
         const currentCount = getCollectedCount();
-        if (currentCount >= 10) {
-          triggerVictory();
-          return;
+        if (currentCount >= 10 && !tenSeedsNotified) {
+          tenSeedsNotified = true;
+          if (btnPlant) btnPlant.classList.remove('hidden');
+          if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+          showPlaceDiscovery({
+            icon: '🌟',
+            fullName: 'Inimigos Desapareceram!',
+            description: '10 sementes resgatadas! Os guardas sumiram da ilha. Continue coletando ou plante nos canteiros (tecla E ou botão Plantar).'
+          });
         }
       }
     }
@@ -1702,7 +1773,7 @@
     renderIslands();
     renderLargeBridge();
 
-    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED) {
+    if (areEnemiesActive()) {
       renderPatrolRoute();
     }
 
@@ -1710,15 +1781,13 @@
     renderSceneryProps();
     renderSignposts();
 
-    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED) {
-      renderSeeds();
-    }
+    renderSeeds();
 
     renderSparkles();
     renderButterflies();
     renderBirds();
 
-    if (currentState !== State.PLANTING && currentState !== State.CONCLUDED) {
+    if (areEnemiesActive()) {
       renderJaguarGuard();
       renderSecondGuard();
     }
@@ -2304,7 +2373,7 @@
 
           ctx.globalAlpha = 1;
         }
-      } else if (currentState === State.PLANTING || currentState === State.CONCLUDED) {
+      } else if (currentState === State.PLANTING || currentState === State.CONCLUDED || (currentState === State.PLAYING && getCollectedCount() >= 10)) {
         const dist = Math.hypot(lia.x - c.x, lia.y - c.y);
         const isNearby = dist <= 52;
 
@@ -4649,16 +4718,23 @@
     playSoundDefeat,
     playSoundConclusion,
     playGuardDisgustSound,
+    areEnemiesActive,
     collectSeed: (id) => {
       const s = seeds.find(item => item.id === id);
       if (s && !s.collected) {
         s.collected = true;
         currentScore += (s.points || (s.type === 'rara' ? 3 : 1));
+        seedsInReserve += 1;
         spawnSparkle(s.x, s.y);
         playSoundCollect();
+        updateLiaSpeedAndNotice();
         updateGuardSpeedAndNotice();
         updateHUD();
-        if (getCollectedCount() >= 10) triggerVictory();
+        if (getCollectedCount() >= 10) {
+          modalTitle.textContent = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+          if (btnPlant) btnPlant.classList.remove('hidden');
+          if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+        }
       }
     },
     collectTenCommon: () => {
@@ -4666,20 +4742,32 @@
       commons.forEach(s => {
         s.collected = true;
         currentScore += s.points;
+        seedsInReserve += 1;
       });
+      updateLiaSpeedAndNotice();
       updateGuardSpeedAndNotice();
       updateHUD();
-      if (getCollectedCount() >= 10) triggerVictory();
+      if (getCollectedCount() >= 10) {
+        modalTitle.textContent = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+        if (btnPlant) btnPlant.classList.remove('hidden');
+        if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+      }
     },
     collectTenRare: () => {
       const rares = seeds.filter(s => s.type === 'rara' && !s.collected).slice(0, 10);
       rares.forEach(s => {
         s.collected = true;
         currentScore += s.points;
+        seedsInReserve += 1;
       });
+      updateLiaSpeedAndNotice();
       updateGuardSpeedAndNotice();
       updateHUD();
-      if (getCollectedCount() >= 10) triggerVictory();
+      if (getCollectedCount() >= 10) {
+        modalTitle.textContent = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+        if (btnPlant) btnPlant.classList.remove('hidden');
+        if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+      }
     },
     collectMixSeeds: (commonCount, rareCount) => {
       const commons = seeds.filter(s => s.type === 'comum' && !s.collected).slice(0, commonCount);
@@ -4687,18 +4775,33 @@
       commons.concat(rares).forEach(s => {
         s.collected = true;
         currentScore += s.points;
+        seedsInReserve += 1;
       });
+      updateLiaSpeedAndNotice();
       updateGuardSpeedAndNotice();
       updateHUD();
-      if (getCollectedCount() >= 10) triggerVictory();
+      if (getCollectedCount() >= 10) {
+        modalTitle.textContent = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+        if (btnPlant) btnPlant.classList.remove('hidden');
+        if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+      }
     },
     collectAllSeeds: () => {
-      seeds.slice(0, 10).forEach(s => {
-        s.collected = true;
-        currentScore += (s.points || 1);
+      seeds.forEach(s => {
+        if (!s.collected) {
+          s.collected = true;
+          currentScore += (s.points || 1);
+          seedsInReserve += 1;
+        }
       });
+      updateLiaSpeedAndNotice();
+      updateGuardSpeedAndNotice();
       updateHUD();
-      triggerVictory();
+      if (getCollectedCount() >= 10) {
+        modalTitle.textContent = currentScore >= 20 ? 'Guardião da ilha' : 'Recuperação básica';
+        if (btnPlant) btnPlant.classList.remove('hidden');
+        if (btnActionPlant) btnActionPlant.classList.remove('hidden');
+      }
     },
     startPlanting: startPlantingPhase,
     plantAtNearby: tryPlantAtNearbyCanteiro,

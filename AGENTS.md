@@ -57,3 +57,6 @@
   - Sistema de 20 Sementes e Pontuação: 10 sementes comuns (1 pt, fora da patrulha) e 10 sementes raras (3 pts, próximas da patrulha); coletar 10 encerra o resgate. Títulos de vitória: "Guardião da ilha" (≥ 20 pts) e "Recuperação básica" (< 20 pts).
   - Segundo Guardião Celeste: patrulha contínua em ciclo pelas sementes raras na mesma velocidade da Lia (105 px/s).
   - Sistema de Escudo Protetor: 3 unidades por tentativa, ativado por tecla `Espaço` ou botão/toque `Escudo`, duração de 3 segundos com barreira visual e rótulo. Proteção contra repetição ao segurar tecla e contra uso simultâneo ou com reserva zerada. A pausa congela a contagem. Contato com os guardas durante a proteção repele o inimigo de volta à origem com som procedural de desgosto. Escudos ocultos e desativados na fase de plantio.
+  - Aumento de Velocidade da Lia (+30%): ao atingir 5 coletas, Lia acelera de 105 px/s para 136,5 px/s com aviso visual em tela.
+  - Desaparecimento dos Inimigos (10 coletas): ao atingir 10 coletas, os guardiões desaparecem do mapa, minimapa e colisões, permitindo que Lia explore com total segurança.
+  - Continuação da Coleta e Plantio Total: após 10 sementes, Lia não é interrompida; ela pode continuar coletando as sementes restantes (11 a 20) e plantar todas as sementes coletadas em 20 canteiros distribuídos pela ilha.
